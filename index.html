@@ -917,12 +917,16 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
 }
 </style>
 
+
+<style id="r191_batch_download_css">
+label:has(#renameZipName), .field:has(#rn_zipName), .field:has(#wm_zipName){display:none!important}
+</style>
 </head>
 <body>
   <header class="topbar">
     <div class="brand">
       <h1>Tool ảnh All‑in‑One R16.3</h1>
-      <p>Thêm ảnh → Quét nền nếu cần → Xử lý → Tải ZIP • Có thêm tab Preview tên & số áo</p>
+      <p>Thêm ảnh → Quét nền nếu cần → Xử lý → Tải hàng loạt • Có thêm tab Preview tên & số áo</p>
     </div>
     <div class="top-actions">
       <button id="pickBtn" class="btn primary" title="Chọn nhiều ảnh PNG, JPG, WEBP từ máy tính">+ Chọn ảnh</button>
@@ -930,7 +934,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
       <button id="quickAllBtn" class="btn success" title="Xử lý nhanh theo đúng các tùy chọn hiện tại; chỉ tự quét nền khi Xóa phông nền đang bật">Xử lý nhanh</button>
       <button id="tightCropAllBtn" class="btn crop-tight-btn" title="Cắt sát phần ảnh còn nhìn thấy/không trong suốt của các ảnh đang chọn">✂ Crop sát</button>
       <button id="processAllBtn" class="btn success2" title="Xử lý toàn bộ ảnh trong danh sách">Xử lý tất cả</button>
-      <button id="downloadAllBtn" class="btn" title="Tải tất cả ảnh đã xử lý thành một file ZIP">Tải ZIP</button>
+      <button id="downloadAllBtn" class="btn" title="Tải tất cả ảnh đã xử lý thành từng file riêng">Tải hàng loạt</button>
       <button id="openFeedbackBtn" class="btn" title="Cuộn nhanh đến mục góp ý/báo lỗi">Góp ý</button>
       <button id="clearBtn" class="btn danger" title="Xóa toàn bộ danh sách ảnh đang làm việc">Xóa</button>
     </div>
@@ -950,7 +954,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
 
   <main id="prepSection" class="layout">
     <aside class="sidebar panel">
-<section class="session-tools"><h2>💾 Phiên làm việc</h2><label class="remember-row"><input type="checkbox" id="rememberSettings" checked><span>Tự nhớ thông số trên máy này</span></label><div class="shortcut-list"><kbd>Ctrl+O</kbd> chọn ảnh • <kbd>Ctrl+Enter</kbd> xử lý nhanh • <kbd>Ctrl+Shift+S</kbd> tải ZIP • <kbd>Ctrl+V</kbd> dán ảnh</div><div class="diag-row"><button type="button" id="selfTestBtn" class="btn tiny">🩺 Tự kiểm tra tool</button><span id="selfTestStatus" class="diag-status">Chưa kiểm tra.</span></div></section>
+<section class="session-tools"><h2>💾 Phiên làm việc</h2><label class="remember-row"><input type="checkbox" id="rememberSettings" checked><span>Tự nhớ thông số trên máy này</span></label><div class="shortcut-list"><kbd>Ctrl+O</kbd> chọn ảnh • <kbd>Ctrl+Enter</kbd> xử lý nhanh • <kbd>Ctrl+Shift+S</kbd> tải hàng loạt • <kbd>Ctrl+V</kbd> dán ảnh</div><div class="diag-row"><button type="button" id="selfTestBtn" class="btn tiny">🩺 Tự kiểm tra tool</button><span id="selfTestStatus" class="diag-status">Chưa kiểm tra.</span></div></section>
 <section class="support-card">
         <h2>Liên hệ hỗ trợ</h2>
         <div class="support-line"><b>Zalo</b><code>0963.898.871</code></div>
@@ -963,7 +967,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
           <div><b>1</b><span>Thêm ảnh</span></div>
           <div><b>2</b><span>Quét vùng nền nếu ảnh có nhiều màu nền</span></div>
           <div><b>3</b><span>Chỉnh thông số nếu cần</span></div>
-          <div><b>4</b><span>Xử lý tất cả rồi tải ZIP</span></div>
+          <div><b>4</b><span>Xử lý tất cả rồi tải hàng loạt</span></div>
         </div>
       </section>
 <section class="preset-card"><h2>⚡ Preset 1 chạm</h2><p>Chọn theo loại ảnh, tool tự điền các thông số chính. Sau đó vẫn có thể chỉnh tay.</p><div class="smart-presets"><button type="button" class="btn preset-btn" data-work-preset="clean"><b>Nền sạch</b><small>Ảnh/logo thông thường</small></button><button type="button" class="btn preset-btn" data-work-preset="detail"><b>Giữ nét mảnh</b><small>Chữ ký, nét nhỏ</small></button><button type="button" class="btn preset-btn" data-work-preset="hard"><b>Nền khó / loang</b><small>Xóa mạnh hơn</small></button><button type="button" class="btn preset-btn" data-work-preset="shopee"><b>Shopee 2K</b><small>2000×2000 • ≤2MB</small></button></div><div id="presetStatus">Chưa chọn preset.</div></section>
@@ -1104,7 +1108,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
         </label>
         <label class="field">
           <span>Tên ảnh / thao tác lỗi</span>
-          <input id="feedbackImageName" placeholder="Ví dụ: logo-01.png, Xử lý nhanh, tải ZIP..." />
+          <input id="feedbackImageName" placeholder="Ví dụ: logo-01.png, Xử lý nhanh, tải hàng loạt..." />
         </label>
         <label class="field">
           <span>Nội dung báo lỗi / góp ý</span>
@@ -1230,7 +1234,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
     <aside class="rename-sidebar panel">
       <section class="rename-card">
         <h2>Đổi tên ảnh hàng loạt</h2>
-        <p class="rename-intro">Nạp ảnh → nạp danh sách tên từ TXT/CSV/Excel → kiểm tra bảng đối chiếu → tải ZIP. Ảnh không bị nén hay đổi chất lượng, chỉ đổi tên file.</p>
+        <p class="rename-intro">Nạp ảnh → nạp danh sách tên từ TXT/CSV/Excel → kiểm tra bảng đối chiếu → tải hàng loạt. Ảnh giữ nguyên chất lượng, chỉ đổi tên file.</p>
       </section>
 
       <section class="rename-card">
@@ -1278,7 +1282,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
       <section class="rename-card">
         <div class="rename-actions">
           <button id="rn_preview" type="button" class="btn rename-primary">Cập nhật xem trước</button>
-          <button id="rn_downloadZip" type="button" class="btn rename-success">Tải ZIP đã đổi tên</button>
+          <button id="rn_downloadZip" type="button" class="btn rename-success">Tải hàng loạt đã đổi tên</button>
         </div>
         <div class="rename-actions" style="margin-top:8px"><button id="rn_exportMap" type="button" class="btn small">Tải bảng đối chiếu CSV</button></div>
       </section>
@@ -1286,7 +1290,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
 
     <section class="rename-main panel">
       <div class="rename-toolbar">
-        <div><b style="font-size:18px">Xem trước tên file</b><div class="rename-mini">Ghép theo thứ tự hiện tại. Bạn nên nhìn cột “Tên mới” trước khi tải ZIP.</div></div>
+        <div><b style="font-size:18px">Xem trước tên file</b><div class="rename-mini">Ghép theo thứ tự hiện tại. Bạn nên nhìn cột “Tên mới” trước khi tải hàng loạt.</div></div>
       </div>
       <div id="rn_status" class="rename-status">Chưa có ảnh. Hãy chọn ảnh và nạp danh sách tên.</div>
       <div class="rename-table-wrap">
@@ -1304,7 +1308,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
       <aside class="logo-sidebar panel">
         <section class="logo-card">
           <h2>Chèn logo / chữ hàng loạt</h2>
-          <p class="logo-intro">Tab này dùng để chèn watermark logo hoặc chữ lên nhiều ảnh cùng lúc. Bạn có thể tải nhiều ảnh nền, tải logo PNG, nhập chữ, kéo bằng chuột để đổi vị trí, rồi xử lý và tải ZIP.</p>
+          <p class="logo-intro">Tab này dùng để chèn watermark logo hoặc chữ lên nhiều ảnh cùng lúc. Bạn có thể tải nhiều ảnh nền, tải logo PNG, nhập chữ, kéo bằng chuột để đổi vị trí, rồi xử lý và tải hàng loạt.</p>
         </section>
 
         <section class="logo-card">
@@ -1387,7 +1391,7 @@ body.r19-refined .r19-disabled{opacity:.58!important;cursor:not-allowed!importan
 
           <div class="inline-btns">
             <button type="button" id="wm_processAll" class="btn success">Xử lý tất cả</button>
-            <button type="button" id="wm_downloadZip" class="btn primary">Tải ZIP</button>
+            <button type="button" id="wm_downloadZip" class="btn primary">Tải hàng loạt</button>
           </div>
           <div id="wm_status" class="preview-status">Sẵn sàng. Hãy tải ảnh và logo/chữ để bắt đầu.</div>
           <ul class="preview-list">
@@ -1660,15 +1664,15 @@ const state = { items: [] };
 
 const CONFIG={feedbackZalo:'0963.898.871',feedbackApiUrl:'PASTE_GOOGLE_APPS_SCRIPT_WEB_APP_URL_HERE'};
 const LANGS={
-vi:{choose:'+ Chọn ảnh',quick:'Xử lý nhanh',all:'Xử lý tất cả',zip:'Tải ZIP',ready:'Sẵn sàng.'},
-en:{choose:'+ Choose images',quick:'Quick process',all:'Process all',zip:'Download ZIP',ready:'Ready.'},
-zh:{choose:'+ 选择图片',quick:'快速处理',all:'全部处理',zip:'下载 ZIP',ready:'Ready.'},
-ja:{choose:'+ 画像を選択',quick:'クイック処理',all:'すべて処理',zip:'ZIP保存',ready:'Ready.'},
-ko:{choose:'+ 이미지 선택',quick:'빠른 처리',all:'전체 처리',zip:'ZIP 다운로드',ready:'Ready.'},
-th:{choose:'+ เลือกรูป',quick:'ประมวลผลเร็ว',all:'ประมวลผลทั้งหมด',zip:'ดาวน์โหลด ZIP',ready:'Ready.'},
-id:{choose:'+ Pilih gambar',quick:'Proses cepat',all:'Proses semua',zip:'Unduh ZIP',ready:'Ready.'},
-es:{choose:'+ Elegir imágenes',quick:'Proceso rápido',all:'Procesar todo',zip:'Descargar ZIP',ready:'Ready.'},
-fr:{choose:'+ Choisir images',quick:'Traitement rapide',all:'Tout traiter',zip:'Télécharger ZIP',ready:'Ready.'}
+vi:{choose:'+ Chọn ảnh',quick:'Xử lý nhanh',all:'Xử lý tất cả',zip:'Tải hàng loạt',ready:'Sẵn sàng.'},
+en:{choose:'+ Choose images',quick:'Quick process',all:'Process all',zip:'Batch download',ready:'Ready.'},
+zh:{choose:'+ 选择图片',quick:'快速处理',all:'全部处理',zip:'批量下载',ready:'Ready.'},
+ja:{choose:'+ 画像を選択',quick:'クイック処理',all:'すべて処理',zip:'一括保存',ready:'Ready.'},
+ko:{choose:'+ 이미지 선택',quick:'빠른 처리',all:'전체 처리',zip:'일괄 다운로드',ready:'Ready.'},
+th:{choose:'+ เลือกรูป',quick:'ประมวลผลเร็ว',all:'ประมวลผลทั้งหมด',zip:'ดาวน์โหลดหลายไฟล์',ready:'Ready.'},
+id:{choose:'+ Pilih gambar',quick:'Proses cepat',all:'Proses semua',zip:'Unduh massal',ready:'Ready.'},
+es:{choose:'+ Elegir imágenes',quick:'Proceso rápido',all:'Procesar todo',zip:'Descarga masiva',ready:'Ready.'},
+fr:{choose:'+ Choisir images',quick:'Traitement rapide',all:'Tout traiter',zip:'Téléchargement groupé',ready:'Ready.'}
 }
 function storageGet(k,d=null){try{const v=localStorage.getItem(k);return v===null?d:v}catch(e){return d}}
 function storageSet(k,v){try{localStorage.setItem(k,v);return true}catch(e){return false}}
@@ -1694,7 +1698,7 @@ function setStatus(t){
   try{
     const n = (typeof el!=='undefined' && el && el.statusText) ? el.statusText : document.getElementById('statusText');
     if(n) n.textContent=t; else console.log('STATUS:', t);
-    if(/Hoàn tất|Đã |Xong:|Lỗi|Đã tạo ZIP/.test(String(t))){const box=document.getElementById('toolToast');if(box){box.textContent=t;box.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.classList.remove('show'),2200)}}
+    if(/Hoàn tất|Đã |Xong:|Lỗi|Đã tải/.test(String(t))){const box=document.getElementById('toolToast');if(box){box.textContent=t;box.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>box.classList.remove('show'),2200)}}
   }catch(err){ console.log('STATUS:', t); }
 }
 
@@ -1723,6 +1727,35 @@ function itemFromCard(card){
 function filenameProcessed(item,index=0){ if(el.renameOn&&el.renameOn.checked){ const start=+el.renameStart.value||1; const num=String(start+index).padStart(2,'0'); return safeName(`${el.renamePrefix.value||'image'}-${num}.png`); } const name=typeof item==='string'?item:item.name; const dot=name.lastIndexOf('.'); const base=dot>-1?name.slice(0,dot):name; return safeName(`${base}_done.png`); }
 function safeRevoke(url){ try{ if(url) URL.revokeObjectURL(url); }catch(e){} }
 function triggerDownload(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); }
+async function downloadFilesBatch(files,onProgress){
+  files=dedupeArchiveNames((files||[]).filter(f=>f&&f.blob));
+  if(!files.length) throw new Error('Không có file để tải.');
+  const report=(msg)=>{try{onProgress&&onProgress(msg)}catch(e){}};
+  if(window.showDirectoryPicker && window.isSecureContext){
+    try{
+      const dir=await window.showDirectoryPicker({mode:'readwrite'});
+      for(let i=0;i<files.length;i++){
+        const f=files[i]; report(`Đang lưu ${i+1}/${files.length}: ${f.name}`);
+        const handle=await dir.getFileHandle(f.name,{create:true});
+        const writable=await handle.createWritable();
+        await writable.write(f.blob); await writable.close();
+      }
+      report(`Đã lưu ${files.length} file riêng.`);
+      return {mode:'folder',count:files.length};
+    }catch(e){
+      if(e && e.name==='AbortError') throw e;
+      console.warn('Không dùng được chọn thư mục, chuyển sang tải tuần tự.',e);
+    }
+  }
+  for(let i=0;i<files.length;i++){
+    const f=files[i]; report(`Đang tải ${i+1}/${files.length}: ${f.name}`);
+    triggerDownload(f.blob,f.name);
+    await new Promise(r=>setTimeout(r,260));
+  }
+  report(`Đã gửi ${files.length} file để tải.`);
+  return {mode:'downloads',count:files.length};
+}
+
 function loadImage(url){ return new Promise((resolve,reject)=>{ const img=new Image(); img.onload=()=>resolve(img); img.onerror=()=>reject(new Error('Không đọc được ảnh này')); img.src=url; }); }
 async function addFiles(fileList){ const files=Array.from(fileList||[]).filter(f=>/^image\/(png|jpeg|webp)$/.test(f.type)||/\.(png|jpe?g|webp)$/i.test(f.name)); if(!files.length){ alert('Chưa chọn đúng file ảnh PNG/JPG/WEBP.'); return; } setStatus(`Đang nạp ${files.length} ảnh...`); let ok=0; for(const file of files){ let url=''; try{ url=URL.createObjectURL(file); const img=await loadImage(url); state.items.push({ id:uid(), file, name:file.name, origUrl:url, origW:img.naturalWidth, origH:img.naturalHeight, selected:true, processedBlob:null, processedUrl:null, processedW:null, processedH:null, scannedColors:[] }); ok++; }catch(e){ safeRevoke(url); console.error(e); } } 
 render(); setStatus(`Đã nạp ${ok}/${files.length} ảnh.`); }
@@ -2730,18 +2763,24 @@ document.addEventListener('paste',e=>{
   if(files.length){ e.preventDefault(); addFiles(files); setStatus('Đã dán '+files.length+' ảnh từ clipboard.'); }
 });
 
-let zipRunning=false;
-async function downloadMainZip(){
-  if(batchRunning) return setStatus('Hãy chờ xử lý xong hoặc bấm Dừng trước khi tải ZIP.');
-  if(zipRunning) return setStatus('ZIP đang được tạo.');
+let batchDownloadRunning=false;
+async function downloadMainBatch(){
+  if(batchRunning) return setStatus('Hãy chờ xử lý xong hoặc bấm Dừng trước khi tải hàng loạt.');
+  if(batchDownloadRunning) return setStatus('Đang tải hàng loạt.');
   const list=state.items.filter(x=>x.selected&&x.processedBlob).map((x,i)=>({name:filenameProcessed(x,i), blob:x.processedBlob}));
-  if(!list.length) return alert('Chưa có ảnh đã xử lý để tải ZIP.');
-  zipRunning=true; const btn=el.downloadAllBtn; if(btn){btn.disabled=true;btn.classList.add('busy');}
-  try{setStatus(`Đang tạo ZIP ${list.length} ảnh...`); const zip=await makeZip(list); if(!zip||!zip.size)throw new Error('ZIP rỗng'); const zipName=safeName((el.renameZipName&&el.renameZipName.value?el.renameZipName.value:'anh_da_xu_ly')+'.zip'); triggerDownload(zip,zipName); setStatus(`Đã tạo ZIP gồm ${list.length} ảnh • ${humanSize(zip.size)}.`); return true;}
-  catch(e){console.error(e);setStatus('Lỗi tạo ZIP: '+(e.message||e));alert('Không tạo được ZIP. Hãy thử lại.');return false;}
-  finally{zipRunning=false;if(btn){btn.disabled=false;btn.classList.remove('busy');}}
+  if(!list.length) return alert('Chưa có ảnh đã xử lý để tải.');
+  batchDownloadRunning=true; const btn=el.downloadAllBtn; if(btn){btn.disabled=true;btn.classList.add('busy');btn.textContent='Đang tải...';}
+  try{
+    const result=await downloadFilesBatch(list,msg=>setStatus(msg));
+    setStatus(result.mode==='folder'?`Đã lưu ${result.count} ảnh riêng vào thư mục đã chọn.`:`Đã gửi ${result.count} ảnh để tải riêng lẻ. Nếu Chrome hỏi, hãy cho phép tải nhiều file.`);
+    return true;
+  }catch(e){
+    if(e&&e.name==='AbortError') setStatus('Đã hủy chọn thư mục.');
+    else {console.error(e);setStatus('Lỗi tải hàng loạt: '+(e.message||e));alert('Không tải được hàng loạt. Hãy thử lại.');}
+    return false;
+  }finally{batchDownloadRunning=false;if(btn){btn.disabled=false;btn.classList.remove('busy');btn.textContent='Tải hàng loạt';}}
 }
-if(el.quickAllBtn) el.quickAllBtn.onclick=()=>processList(state.items,true); el.processAllBtn.onclick=()=>processList(state.items,false); el.processSelectedBtn.onclick=()=>processList(state.items.filter(x=>x.selected),false); el.downloadAllBtn.onclick=downloadMainZip;
+if(el.quickAllBtn) el.quickAllBtn.onclick=()=>processList(state.items,true); el.processAllBtn.onclick=()=>processList(state.items,false); el.processSelectedBtn.onclick=()=>processList(state.items.filter(x=>x.selected),false); el.downloadAllBtn.onclick=downloadMainBatch;
 el.clearBtn.onclick=()=>{ if(guardBatchMutation('xóa danh sách'))return; if(!state.items.length)return setStatus('Danh sách đang trống.'); if(!confirm('Xóa toàn bộ danh sách ảnh?')) return; const old=[...state.items]; stashDeleted(old); state.items=[]; render(); setBatchProgress(0,0,'Sẵn sàng xử lý ảnh hàng loạt.'); setStatus(`Đã xóa ${old.length} ảnh • có thể Hoàn tác.`); };
 if(el.copyFirstColorsBtn) el.copyFirstColorsBtn.onclick=()=>{ const first=state.items.find(x=>x.scannedColors.length); if(!first) return alert('Chưa có ảnh nào được quét màu nền.'); for(const item of state.items){ item.scannedColors=first.scannedColors.map(c=>[...c]); } render(); setStatus('Đã áp màu quét đầu tiên cho tất cả ảnh.'); };
 if(el.resetSettingsBtn) el.resetSettingsBtn.onclick=applyDefaults;
@@ -2836,11 +2875,11 @@ if(typeof window!=='undefined'){
         setBtnText('pickBtn','+ Chọn ảnh');
         setBtnText('quickAllBtn','Xử lý logo/chữ');
         setBtnText('processAllBtn','Xử lý tất cả');
-        setBtnText('downloadAllBtn','Tải ZIP');
+        setBtnText('downloadAllBtn','Tải hàng loạt');
         setBtnText('clearBtn','Xóa ảnh');
         if(quick) quick.title='Xử lý ảnh trong tab Chèn logo / chữ';
         if(all) all.title='Xử lý tất cả ảnh trong tab Chèn logo / chữ';
-        if(zip) zip.title='Tải ZIP ảnh watermark đã xử lý';
+        if(zip) zip.title='Tải hàng loạt ảnh watermark đã xử lý';
       }else if(mode==='preview'){
         setBtnText('pickBtn','+ Chọn ảnh áo');
         setBtnText('quickAllBtn','Xuất PNG');
@@ -2851,7 +2890,7 @@ if(typeof window!=='undefined'){
         setBtnText('pickBtn','+ Chọn ảnh');
         setBtnText('quickAllBtn','Xử lý nhanh');
         setBtnText('processAllBtn','Xử lý tất cả');
-        setBtnText('downloadAllBtn','Tải ZIP');
+        setBtnText('downloadAllBtn','Tải hàng loạt');
         setBtnText('clearBtn','Xóa');
       }
     }
@@ -3245,7 +3284,7 @@ if(typeof window!=='undefined'){
         if(els.processAll){ els.processAll.disabled=false; els.processAll.textContent='Xử lý tất cả'; }
       }
     }
-    async function downloadZip(){ const list=state.images.filter(x=>x.doneBlob).map((x,i)=>({name:wmOutputName(x,i), blob:x.doneBlob})); if(!list.length) return alert('Chưa có ảnh đã xử lý. Hãy bấm Xử lý tất cả trước.'); setStatus('Đang tạo ZIP watermark...'); if(typeof makeZip==='function' && typeof triggerDownload==='function'){ const zip=await makeZip(list); triggerDownload(zip,safeName((els.zipName&&els.zipName.value)||'anh_watermark')+'.zip'); } else { alert('Không tìm thấy hàm ZIP trong tool chính.'); } setStatus(`Đã tạo ZIP gồm ${list.length} ảnh.`); }
+    async function downloadZip(){ const list=state.images.filter(x=>x.doneBlob).map((x,i)=>({name:wmOutputName(x,i), blob:x.doneBlob})); if(!list.length) return alert('Chưa có ảnh đã xử lý. Hãy bấm Xử lý tất cả trước.'); const btn=els.downloadZip; if(btn){btn.disabled=true;btn.textContent='Đang tải...';} try{const r=await downloadFilesBatch(list,msg=>setStatus(msg));setStatus(r.mode==='folder'?`Đã lưu ${r.count} ảnh watermark riêng.`:`Đã gửi ${r.count} ảnh watermark để tải riêng lẻ.`);}catch(e){if(e?.name==='AbortError')setStatus('Đã hủy chọn thư mục.');else{console.error(e);setStatus('Lỗi tải hàng loạt: '+(e.message||e));}}finally{if(btn){btn.disabled=false;btn.textContent='Tải hàng loạt';}} }
 
     if(els.images) els.images.addEventListener('change',e=>handleImages(e.target.files));
     if(els.logoFile) els.logoFile.addEventListener('change',e=>handleLogo(e.target.files[0]));
@@ -3297,7 +3336,7 @@ if(typeof window!=='undefined'){
 })();
 
 </script>
-<div id="toolToast" class="toast-box"></div><div id="quickDock" class="quick-dock"><span id="dockStat" class="dock-stat">0 ảnh • 0 đã xử lý</span><button type="button" id="dockPick" class="btn">+ Ảnh</button><button type="button" id="dockProcess" class="btn dock-process">⚡ Xử lý nhanh</button><button type="button" id="dockDownload" class="btn dock-download">↓ ZIP</button><button type="button" id="compactHelpBtn" class="btn compact-toggle">Ẩn hướng dẫn</button></div>
+<div id="toolToast" class="toast-box"></div><div id="quickDock" class="quick-dock"><span id="dockStat" class="dock-stat">0 ảnh • 0 đã xử lý</span><button type="button" id="dockPick" class="btn">+ Ảnh</button><button type="button" id="dockProcess" class="btn dock-process">⚡ Xử lý nhanh</button><button type="button" id="dockDownload" class="btn dock-download">↓ Tải</button><button type="button" id="compactHelpBtn" class="btn compact-toggle">Ẩn hướng dẫn</button></div>
 
 <script>
 /* R16 UI composition only — no processing logic changed. */
@@ -3513,7 +3552,7 @@ if(galleryR163) galleryR163.addEventListener('click',async e=>{
     const side=q('#prepSection .sidebar'); if(!side||$('.r17-workflow'))return;
     document.body.classList.add('r17-ui');
     const title=q('.brand h1'), sub=q('.brand p'); if(title)title.textContent='Image Studio'; if(sub)sub.textContent='Chọn ảnh → chọn việc cần làm → xử lý';
-    const quick=$('quickAllBtn'); if(quick)quick.textContent='Xử lý'; const zip=$('downloadAllBtn'); if(zip)zip.textContent='Tải ZIP';
+    const quick=$('quickAllBtn'); if(quick)quick.textContent='Xử lý'; const zip=$('downloadAllBtn'); if(zip)zip.textContent='Tải hàng loạt';
 
     const wf=make('section','r17-workflow');
     wf.innerHTML=`
@@ -3635,7 +3674,7 @@ if(galleryR163) galleryR163.addEventListener('click',async e=>{
     if(missing)setStatus(`Còn ${missing} ảnh chưa có tên mới. Hãy bổ sung tên hoặc bật “Ảnh thiếu tên: giữ tên cũ”.`,'err');
     else if(extra)setStatus(`Đã sẵn sàng ${rows.length} ảnh. Danh sách tên đang thừa ${extra} dòng, các dòng thừa sẽ không dùng.`,'warn');
     else if(warn)setStatus(`Đã sẵn sàng ${rows.length} ảnh. Có ${warn} dòng được tự xử lý/cảnh báo.`,'warn');
-    else setStatus(`Đã ghép đủ ${rows.length}/${rows.length} ảnh. Có thể tải ZIP.`,'ok');
+    else setStatus(`Đã ghép đủ ${rows.length}/${rows.length} ảnh. Có thể tải hàng loạt.`,'ok');
   }
   function parseCSV(text){
     text=String(text||'').replace(/^\uFEFF/,'');const delim=(text.match(/;/g)||[]).length>(text.match(/,/g)||[]).length?';':',';const rows=[];let row=[],field='',q=false;
@@ -3683,7 +3722,7 @@ if(galleryR163) galleryR163.addEventListener('click',async e=>{
     }catch(e){console.error(e);setStatus('Lỗi đọc danh sách: '+(e.message||e),'err')}
   }
   function exportMap(){const rows=buildMapping();if(!rows.length)return setStatus('Chưa có dữ liệu để xuất bảng đối chiếu.','warn');const q=s=>'"'+String(s??'').replace(/"/g,'""')+'"';const csv='STT,Tên cũ,Tên mới,Trạng thái\r\n'+rows.map(r=>[r.index,r.oldName,r.newName,r.status].map(q).join(',')).join('\r\n');triggerDownload(new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'}),'bang_doi_chieu_doi_ten.csv')}
-  async function downloadZip(){const rows=buildMapping();if(!rows.length)return setStatus('Chưa có ảnh để tải.','warn');const bad=rows.filter(r=>!r.newName);if(bad.length)return setStatus(`Còn ${bad.length} ảnh chưa có tên mới. Chưa thể tạo ZIP.`,'err');const btn=$('rn_downloadZip');btn.disabled=true;btn.textContent='Đang tạo ZIP...';try{const files=rows.map(r=>({name:r.newName,blob:r.img.file}));const z=await makeZip(files);triggerDownload(z,safeName(($('rn_zipName').value||'anh_da_doi_ten')+'.zip'));setStatus(`Đã tạo ZIP ${rows.length} ảnh. Ảnh giữ nguyên chất lượng gốc.`,'ok')}catch(e){console.error(e);setStatus('Lỗi tạo ZIP: '+(e.message||e),'err')}finally{btn.disabled=false;btn.textContent='Tải ZIP đã đổi tên'}}
+  async function downloadZip(){const rows=buildMapping();if(!rows.length)return setStatus('Chưa có ảnh để tải.','warn');const bad=rows.filter(r=>!r.newName);if(bad.length)return setStatus(`Còn ${bad.length} ảnh chưa có tên mới. Chưa thể tải hàng loạt.`,'err');const btn=$('rn_downloadZip');btn.disabled=true;btn.textContent='Đang tải...';try{const files=rows.map(r=>({name:r.newName,blob:r.img.file}));const result=await downloadFilesBatch(files,msg=>setStatus(msg));setStatus(result.mode==='folder'?`Đã lưu ${rows.length} ảnh riêng, giữ nguyên chất lượng gốc.`:`Đã gửi ${rows.length} ảnh để tải riêng lẻ, giữ nguyên chất lượng gốc.`,'ok')}catch(e){if(e?.name==='AbortError')setStatus('Đã hủy chọn thư mục.','warn');else{console.error(e);setStatus('Lỗi tải hàng loạt: '+(e.message||e),'err')}}finally{btn.disabled=false;btn.textContent='Tải hàng loạt đã đổi tên'}}
   function bind(){
     $('rn_imageInput').addEventListener('change',e=>{cleanupImages();state.images=[...e.target.files].filter(f=>/^image\/(png|jpeg|webp)$/i.test(f.type)||/\.(png|jpe?g|webp)$/i.test(f.name)).map((f,i)=>({file:f,name:f.name,url:URL.createObjectURL(f),order:i}));render()});
     $('rn_nameFile').addEventListener('change',e=>loadNameFile(e.target.files[0]));
