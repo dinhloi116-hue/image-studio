@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tool ảnh all-in-one R15 • Xóa nền + Preview + Logo</title>
+  <title>Image Studio R19</title>
   <style>
 
 :root{--bg:#0f172a;--panel:#111827;--panel2:#0d1627;--text:#e5e7eb;--muted:#94a3b8;--line:#334155;--accent:#3b82f6;--success:#16a34a;--danger:#dc2626;--vio:#7c3aed}
@@ -3797,8 +3797,11 @@ if(galleryR163) galleryR163.addEventListener('click',async e=>{
     ['optRemoveBg','optDefringe','optCrop','optSharpen','paddingXPx','paddingYPx','outputSize','outputBgMode','customW','customH','strokeMode','strokePx','shadowMode'].forEach(id=>{$(id)?.addEventListener('input',refresh);$(id)?.addEventListener('change',refresh)});
     $('gallery')?.addEventListener('click',()=>setTimeout(refresh,30));
     window.addEventListener('resize',refresh);
-    const mo=new MutationObserver(()=>refresh());mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});
-    setInterval(updateRenameNote,800);
+    let refreshQueued=false;
+    const queueRefresh=()=>{ if(refreshQueued)return; refreshQueued=true; requestAnimationFrame(()=>{refreshQueued=false; refresh();}); };
+    const mo=new MutationObserver(()=>queueRefresh());
+    mo.observe(document.body,{subtree:true,childList:true});
+    setInterval(updateRenameNote,1200);
   }
   function init(){document.body.classList.add('r19-refined');ensureContext();ensureMobileBar();ensureRenameNote();bind();refresh()}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
