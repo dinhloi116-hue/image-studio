@@ -20,4 +20,4 @@ Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitH
 
 Bản hiện tại: **R19 Refined**.
 
-> Ứng dụng được đóng gói thành `index.html` + các payload trong thư mục `app3/` để giữ nguyên đầy đủ tool một-file gốc.
+> Ứng dụng được đóng gói thành `index.html` + 12 payload trong thư mục `app/` để giữ nguyên đầy đủ tool một-file gốc.
