@@ -1,0 +1,147 @@
+name: Apply batch individual downloads
+on:
+  push:
+    branches: [main]
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Replace ZIP export with individual batch downloads
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          def patch_file(path):
+              p=Path(path)
+              s=p.read_text(encoding='utf-8')
+              if 'async function downloadFilesBatch(files,onProgress)' in s and 'Image Studio R19.1' in s:
+                  return False
+
+              s=s.replace('<title>Tool ảnh all-in-one R15 • Xóa nền + Preview + Logo</title>','<title>Image Studio R19.1 • Tải hàng loạt</title>')
+
+              needle="function triggerDownload(blob,name){ const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000); }"
+              helper=needle+"""
+          async function downloadFilesBatch(files,onProgress){
+            files=dedupeArchiveNames((files||[]).filter(f=>f&&f.blob));
+            if(!files.length) throw new Error('Không có file để tải.');
+            const report=(msg)=>{try{onProgress&&onProgress(msg)}catch(e){}};
+            if(window.showDirectoryPicker && window.isSecureContext){
+              try{
+                const dir=await window.showDirectoryPicker({mode:'readwrite'});
+                for(let i=0;i<files.length;i++){
+                  const f=files[i]; report(`Đang lưu ${i+1}/${files.length}: ${f.name}`);
+                  const handle=await dir.getFileHandle(f.name,{create:true});
+                  const writable=await handle.createWritable();
+                  await writable.write(f.blob); await writable.close();
+                }
+                report(`Đã lưu ${files.length} file riêng.`);
+                return {mode:'folder',count:files.length};
+              }catch(e){
+                if(e && e.name==='AbortError') throw e;
+                console.warn('Không dùng được chọn thư mục, chuyển sang tải tuần tự.',e);
+              }
+            }
+            for(let i=0;i<files.length;i++){
+              const f=files[i]; report(`Đang tải ${i+1}/${files.length}: ${f.name}`);
+              triggerDownload(f.blob,f.name);
+              await new Promise(r=>setTimeout(r,260));
+            }
+            report(`Đã gửi ${files.length} file để tải.`);
+            return {mode:'downloads',count:files.length};
+          }
+          """
+              if needle not in s: raise RuntimeError(f'triggerDownload not found in {path}')
+              s=s.replace(needle,helper,1)
+
+              pat=re.compile(r"let zipRunning=false;\s*async function downloadMainZip\(\)\{.*?\n\}\nif\(el\.quickAllBtn\)", re.S)
+              m=pat.search(s)
+              if not m: raise RuntimeError(f'main ZIP block not found in {path}')
+              new="""let batchDownloadRunning=false;
+          async function downloadMainBatch(){
+            if(batchRunning) return setStatus('Hãy chờ xử lý xong hoặc bấm Dừng trước khi tải hàng loạt.');
+            if(batchDownloadRunning) return setStatus('Đang tải hàng loạt.');
+            const list=state.items.filter(x=>x.selected&&x.processedBlob).map((x,i)=>({name:filenameProcessed(x,i), blob:x.processedBlob}));
+            if(!list.length) return alert('Chưa có ảnh đã xử lý để tải.');
+            batchDownloadRunning=true; const btn=el.downloadAllBtn; if(btn){btn.disabled=true;btn.classList.add('busy');btn.textContent='Đang tải...';}
+            try{
+              const result=await downloadFilesBatch(list,msg=>setStatus(msg));
+              setStatus(result.mode==='folder'?`Đã lưu ${result.count} ảnh riêng vào thư mục đã chọn.`:`Đã gửi ${result.count} ảnh để tải riêng lẻ. Nếu Chrome hỏi, hãy cho phép tải nhiều file.`);
+              return true;
+            }catch(e){
+              if(e&&e.name==='AbortError') setStatus('Đã hủy chọn thư mục.');
+              else {console.error(e);setStatus('Lỗi tải hàng loạt: '+(e.message||e));alert('Không tải được hàng loạt. Hãy thử lại.');}
+              return false;
+            }finally{batchDownloadRunning=false;if(btn){btn.disabled=false;btn.classList.remove('busy');btn.textContent='Tải hàng loạt';}}
+          }
+          if(el.quickAllBtn)"""
+              s=s[:m.start()]+new+s[m.end():]
+              s=s.replace('el.downloadAllBtn.onclick=downloadMainZip;','el.downloadAllBtn.onclick=downloadMainBatch;',1)
+
+              pat_wm=re.compile(r"async function downloadZip\(\)\{ const list=state\.images\.filter\(x=>x\.doneBlob\).*?setStatus\(`Đã tạo ZIP gồm \$\{list\.length\} ảnh\.`\); \}",re.S)
+              m=pat_wm.search(s)
+              if not m: raise RuntimeError(f'watermark ZIP block not found in {path}')
+              wm="""async function downloadZip(){ const list=state.images.filter(x=>x.doneBlob).map((x,i)=>({name:wmOutputName(x,i), blob:x.doneBlob})); if(!list.length) return alert('Chưa có ảnh đã xử lý. Hãy bấm Xử lý tất cả trước.'); const btn=els.downloadZip; if(btn){btn.disabled=true;btn.textContent='Đang tải...';} try{const r=await downloadFilesBatch(list,msg=>setStatus(msg));setStatus(r.mode==='folder'?`Đã lưu ${r.count} ảnh watermark riêng.`:`Đã gửi ${r.count} ảnh watermark để tải riêng lẻ.`);}catch(e){if(e?.name==='AbortError')setStatus('Đã hủy chọn thư mục.');else{console.error(e);setStatus('Lỗi tải hàng loạt: '+(e.message||e));}}finally{if(btn){btn.disabled=false;btn.textContent='Tải hàng loạt';}} }"""
+              s=s[:m.start()]+wm+s[m.end():]
+
+              idx=s.index("const btn=$('rn_downloadZip')")
+              start=s.rfind('async function downloadZip(){',0,idx)
+              end=s.find("  function bind(){",idx)
+              if start<0 or end<0: raise RuntimeError(f'rename ZIP block not found in {path}')
+              rn="""async function downloadZip(){const rows=buildMapping();if(!rows.length)return setStatus('Chưa có ảnh để tải.','warn');const bad=rows.filter(r=>!r.newName);if(bad.length)return setStatus(`Còn ${bad.length} ảnh chưa có tên mới. Chưa thể tải hàng loạt.`,'err');const btn=$('rn_downloadZip');btn.disabled=true;btn.textContent='Đang tải...';try{const files=rows.map(r=>({name:r.newName,blob:r.img.file}));const result=await downloadFilesBatch(files,msg=>setStatus(msg));setStatus(result.mode==='folder'?`Đã lưu ${rows.length} ảnh riêng, giữ nguyên chất lượng gốc.`:`Đã gửi ${rows.length} ảnh để tải riêng lẻ, giữ nguyên chất lượng gốc.`,'ok')}catch(e){if(e?.name==='AbortError')setStatus('Đã hủy chọn thư mục.','warn');else{console.error(e);setStatus('Lỗi tải hàng loạt: '+(e.message||e),'err')}}finally{btn.disabled=false;btn.textContent='Tải hàng loạt đã đổi tên'}}
+          """
+              s=s[:start]+rn+s[end:]
+
+              pairs=[
+                ('Xử lý → Tải ZIP','Xử lý → Tải hàng loạt'),
+                ('Tải tất cả ảnh đã xử lý thành một file ZIP','Tải tất cả ảnh đã xử lý thành từng file riêng'),
+                ('Ctrl+Shift+S</kbd> tải ZIP','Ctrl+Shift+S</kbd> tải hàng loạt'),
+                ('Xử lý tất cả rồi tải ZIP','Xử lý tất cả rồi tải hàng loạt'),
+                ('Nạp ảnh → nạp danh sách tên từ TXT/CSV/Excel → kiểm tra bảng đối chiếu → tải ZIP. Ảnh không bị nén hay đổi chất lượng, chỉ đổi tên file.','Nạp ảnh → nạp danh sách tên từ TXT/CSV/Excel → kiểm tra bảng đối chiếu → tải hàng loạt. Ảnh giữ nguyên chất lượng, chỉ đổi tên file.'),
+                ('Bạn nên nhìn cột “Tên mới” trước khi tải ZIP.','Bạn nên nhìn cột “Tên mới” trước khi tải hàng loạt.'),
+                ('rồi xử lý và tải ZIP.','rồi xử lý và tải hàng loạt.'),
+                ('↓ ZIP','↓ Tải'),
+                ('Tải ZIP đã đổi tên','Tải hàng loạt đã đổi tên'),
+                ('Tải ZIP','Tải hàng loạt'),
+                ('tải ZIP','tải hàng loạt'),
+              ]
+              for a,b in pairs: s=s.replace(a,b)
+              s=s.replace('ZIP đang được tạo.','Đang tải hàng loạt.')
+              s=s.replace('Đã tạo ZIP','Đã tải')
+              s=s.replace("zip:'Download ZIP'","zip:'Batch download'").replace("zip:'下载 ZIP'","zip:'批量下载'").replace("zip:'ZIP保存'","zip:'一括保存'").replace("zip:'ZIP 다운로드'","zip:'일괄 다운로드'").replace("zip:'ดาวน์โหลด ZIP'","zip:'ดาวน์โหลดหลายไฟล์'").replace("zip:'Unduh ZIP'","zip:'Unduh massal'").replace("zip:'Descargar ZIP'","zip:'Descarga masiva'").replace("zip:'Télécharger ZIP'","zip:'Téléchargement groupé'")
+
+              css='''\n<style id="r191_batch_download_css">\nlabel:has(#renameZipName), .field:has(#rn_zipName), .field:has(#wm_zipName){display:none!important}\n</style>\n'''
+              s=s.replace('</head>',css+'</head>',1)
+              p.write_text(s,encoding='utf-8')
+              return True
+
+          changed=False
+          for f in ('index.html','direct/index.html'):
+              changed=patch_file(f) or changed
+          print('patched',changed)
+          PY
+      - name: Verify JavaScript parses
+        run: |
+          node - <<'NODE'
+          const fs=require('fs');
+          for(const f of ['index.html','direct/index.html']){
+            const h=fs.readFileSync(f,'utf8');
+            const scripts=[...h.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(m=>m[1]);
+            scripts.forEach(x=>new Function(x));
+            if(!h.includes('downloadFilesBatch') || h.includes('Tải ZIP')) throw new Error('Batch download verification failed: '+f);
+            console.log(f, scripts.length+'/'+scripts.length, 'scripts OK');
+          }
+          NODE
+      - name: Commit R19.1 and remove one-shot workflow
+        run: |
+          rm -f .github/workflows/apply-batch-download.yml
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add index.html direct/index.html .github/workflows/apply-batch-download.yml
+          git diff --cached --quiet && exit 0
+          git commit -m "R19.1: download images individually instead of ZIP"
+          git push
