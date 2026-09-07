@@ -1,0 +1,39 @@
+name: Fix R19 UI freeze
+
+on:
+  push:
+    paths:
+      - '.github/workflows/fix-r19-freeze.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Patch infinite MutationObserver loop
+        shell: python
+        run: |
+          from pathlib import Path
+          files=[Path('index.html'),Path('direct/index.html')]
+          old="const mo=new MutationObserver(()=>refresh());mo.observe(document.body,{subtree:true,childList:true,attributes:true,attributeFilter:['class']});\n    setInterval(updateRenameNote,800);"
+          new="let refreshQueued=false;\n    const queueRefresh=()=>{ if(refreshQueued)return; refreshQueued=true; requestAnimationFrame(()=>{refreshQueued=false; refresh();}); };\n    const mo=new MutationObserver(()=>queueRefresh());\n    mo.observe(document.body,{subtree:true,childList:true});\n    setInterval(updateRenameNote,1200);"
+          for p in files:
+              s=p.read_text(encoding='utf-8')
+              if old not in s:
+                  raise SystemExit(f'freeze pattern not found in {p}')
+              s=s.replace(old,new,1)
+              s=s.replace('<title>Tool ảnh all-in-one R15 • Xóa nền + Preview + Logo</title>','<title>Image Studio R19</title>',1)
+              p.write_text(s,encoding='utf-8')
+              print('patched',p)
+      - name: Commit fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html direct/index.html
+          git commit -m "Fix R19 infinite MutationObserver UI freeze"
+          git push
