@@ -4,22 +4,43 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Image Studio</title>
-<style>html,body{margin:0;background:#0b0f15;color:#e5e7eb;font-family:Segoe UI,Arial,sans-serif}#boot{min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center}.box{max-width:560px}.spin{width:36px;height:36px;border:4px solid #283344;border-top-color:#3b82f6;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}</style>
+<style>
+html,body{margin:0;background:#0b0f15;color:#e5e7eb;font-family:Segoe UI,Arial,sans-serif}#boot{min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center}.box{max-width:620px}.spin{width:36px;height:36px;border:4px solid #283344;border-top-color:#3b82f6;border-radius:50%;margin:0 auto 16px;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}#bootmsg{color:#cbd5e1;line-height:1.5}.err{color:#fca5a5!important;white-space:pre-wrap}
+</style>
 </head>
-<body><div id="boot"><div class="box"><div class="spin"></div><b>Đang mở Image Studio...</b><p id="bootmsg">Vui lòng chờ một chút.</p></div></div>
-<script>window.__IMAGE_STUDIO_PAYLOAD__=[];</script>
-<script src="app/payload-01.js"></script>
-<script src="app/payload-02.js"></script>
-<script src="app/payload-03.js"></script>
-<script src="app/payload-04.js"></script>
-<script src="app/payload-05.js"></script>
-<script src="app/payload-06.js"></script>
-<script src="app/payload-07.js"></script>
-<script src="app/payload-08.js"></script>
-<script src="app/payload-09.js"></script>
-<script src="app/payload-10.js"></script>
-<script src="app/payload-11.js"></script>
-<script src="app/payload-12.js"></script>
+<body>
+<div id="boot"><div class="box"><div class="spin"></div><b>Đang mở Image Studio...</b><p id="bootmsg">Đang chuẩn bị dữ liệu.</p></div></div>
 <script>
-(async()=>{try{if(typeof DecompressionStream==='undefined')throw new Error('Trình duyệt quá cũ. Hãy mở bằng Chrome/Edge mới.');const b=window.__IMAGE_STUDIO_PAYLOAD__.join('');const a=Uint8Array.from(atob(b),c=>c.charCodeAt(0));const html=await new Response(new Blob([a]).stream().pipeThrough(new DecompressionStream('gzip'))).text();document.open();document.write(html);document.close()}catch(e){document.getElementById('bootmsg').textContent='Không mở được tool: '+(e.message||e)}})();
-</script></body></html>
+(async()=>{
+  const msg=document.getElementById('bootmsg');
+  const fail=t=>{msg.className='err';msg.textContent=t;throw new Error(t)};
+  try{
+    if(typeof DecompressionStream==='undefined') fail('Trình duyệt chưa hỗ trợ giải nén dữ liệu. Hãy mở bằng Chrome hoặc Edge mới.');
+    const parts=[];
+    for(let i=1;i<=12;i++){
+      const n=String(i).padStart(2,'0');
+      msg.textContent=`Đang tải dữ liệu ${i}/12...`;
+      const ctl=new AbortController();
+      const timer=setTimeout(()=>ctl.abort(),15000);
+      let r;
+      try{r=await fetch(`app/payload-${n}.js?v=4`,{cache:'no-store',signal:ctl.signal});}finally{clearTimeout(timer)}
+      if(!r.ok) fail(`Không tải được payload-${n}.js (HTTP ${r.status}).`);
+      const t=await r.text();
+      const m=t.match(/\.push\(['\"]([A-Za-z0-9+/=]+)['\"]\)/);
+      if(!m) fail(`payload-${n}.js không đúng định dạng.`);
+      parts.push(m[1]);
+    }
+    msg.textContent='Đang giải nén Image Studio...';
+    const b=parts.join('');
+    const bytes=Uint8Array.from(atob(b),c=>c.charCodeAt(0));
+    const html=await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text();
+    if(!html.includes('<html')&&!html.includes('<!doctype')) fail('Dữ liệu giải nén không phải HTML hợp lệ.');
+    document.open();document.write(html);document.close();
+  }catch(e){
+    if(!msg.classList.contains('err')){msg.className='err';msg.textContent='Không mở được tool: '+(e?.name==='AbortError'?'Quá thời gian tải dữ liệu.':(e?.message||e));}
+    console.error(e);
+  }
+})();
+</script>
+</body>
+</html>
