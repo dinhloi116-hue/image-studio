@@ -1,0 +1,76 @@
+name: Rebuild direct Image Studio index
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'app/payload-*.js'
+      - '.github/workflows/rebuild-direct-index.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  rebuild:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Reconstruct R19 as plain index.html
+        shell: python
+        run: |
+          import base64, gzip, pathlib, re, hashlib
+
+          root = pathlib.Path('.')
+          parts = []
+          for i in range(1, 13):
+              p = root / 'app' / f'payload-{i:02d}.js'
+              text = p.read_text(encoding='utf-8')
+              m = re.search(r"\.push\(['\"]([A-Za-z0-9+/=]+)['\"]\)", text)
+              if not m:
+                  raise SystemExit(f'Invalid payload: {p}')
+              parts.append(m.group(1))
+
+          packed = base64.b64decode(''.join(parts))
+          html = gzip.decompress(packed)
+          text = html.decode('utf-8')
+
+          required = ['<!doctype html>', 'r19-refined', 'openRenameModeBtn']
+          missing = [x for x in required if x not in text]
+          if missing:
+              raise SystemExit('R19 validation failed: ' + ', '.join(missing))
+
+          pathlib.Path('index.html').write_bytes(html)
+          print('index.html bytes:', len(html))
+          print('sha256:', hashlib.sha256(html).hexdigest())
+
+      - name: Verify inline JavaScript parses
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('fs');
+          const h = fs.readFileSync('index.html','utf8');
+          const scripts = [...h.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/gi)].map(x => x[1]);
+          let ok = 0;
+          scripts.forEach((s,i) => {
+            try { new Function(s); ok++; }
+            catch(e) { console.error(`Script ${i+1} failed:`, e.message); process.exitCode = 1; }
+          });
+          console.log(`JavaScript parse: ${ok}/${scripts.length}`);
+          if (ok !== scripts.length) process.exit(1);
+          NODE
+
+      - name: Commit direct index.html
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "index.html already direct and up to date"
+            exit 0
+          fi
+          git commit -m "Build direct R19 index without runtime loader"
+          git push
