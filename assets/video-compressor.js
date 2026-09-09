@@ -1,5 +1,5 @@
 (()=>{
-  if(window.__VIDCOMP_R195)return; window.__VIDCOMP_R195=1;
+  if(window.__VIDCOMP_R196)return; window.__VIDCOMP_R196=1;
   const $=id=>document.getElementById(id), $$=s=>[...document.querySelectorAll(s)];
   const sleep=ms=>new Promise(r=>setTimeout(r,ms));
   const fmt=n=>{if(!Number.isFinite(n))return '-';let u=['B','KB','MB','GB'],i=0;while(n>=1024&&i<3){n/=1024;i++}return n.toFixed(i&&n<10?1:0)+' '+u[i]};
@@ -38,7 +38,7 @@
       </div>
       <div class="vc5-card">
         <h3>1. Chọn mức nén</h3>
-        <div class="vc5-note">Ví dụ 80% = file mới mục tiêu còn khoảng 80% dung lượng gốc. Chrome dùng VBR nên thực tế có thể lệch khoảng 5–15%.</div>
+        <div class="vc5-note">Ví dụ 80% = file mới mục tiêu còn khoảng 80% dung lượng gốc. Tool tự <b>đo bitrate thực tế vài giây trước khi nén</b> để bám gần % bạn chọn. Kết quả lớn hơn file gốc sẽ luôn bị chặn.</div>
         <div class="vc5-ratios">
           <button class="btn vc5-ratio" data-r="90">90%</button><button class="btn vc5-ratio active" data-r="80">80%</button><button class="btn vc5-ratio" data-r="70">70%</button><button class="btn vc5-ratio" data-r="60">60%</button><button class="btn vc5-ratio" data-r="50">50%</button>
         </div>
@@ -55,7 +55,7 @@
           <label>Giới hạn độ phân giải<select id="vc5H"><option value="0" selected>Giữ nguyên</option><option value="2160">Tối đa 4K / 2160p</option><option value="1440">Tối đa 1440p</option><option value="1080">Tối đa 1080p</option><option value="720">Tối đa 720p</option><option value="480">Tối đa 480p</option></select></label>
           <label>FPS khi cần resize<select id="vc5Fps"><option value="30" selected>30 FPS</option><option value="24">24 FPS</option><option value="20">20 FPS</option><option value="15">15 FPS</option></select></label>
           <label>Âm thanh<select id="vc5Audio"><option value="160">Giữ tốt - 160 kbps</option><option value="128" selected>Chuẩn - 128 kbps</option><option value="96">Nhẹ - 96 kbps</option><option value="64">Rất nhẹ - 64 kbps</option><option value="0">Tắt âm thanh</option></select></label>
-          <label>Định dạng<select id="vc5Fmt"><option value="auto" selected>Tự động - ưu tiên MP4</option><option value="mp4">MP4</option><option value="webm">WebM</option></select></label>
+          <label>Định dạng<select id="vc5Fmt"><option value="auto" selected>Tự động - MP4, nếu vượt dung lượng sẽ thử WebM</option><option value="mp4">MP4</option><option value="webm">WebM</option></select></label>
           <label class="full">Cách đặt mục tiêu<select id="vc5Mode"><option value="percent" selected>Theo % dung lượng file gốc</option><option value="mb">Theo dung lượng tối đa MB</option></select></label>
           <label id="vc5MbWrap" class="full" style="display:none">Dung lượng tối đa mỗi video (MB)<input id="vc5Mb" type="number" min="1" step="1" value="50"></label>
         </div>
@@ -71,27 +71,46 @@
   function cfg(){return{pct:Math.max(20,Math.min(95,+$('vc5PctNum').value||80)),h:+$('vc5H').value||0,fps:+$('vc5Fps').value||30,a:+$('vc5Audio').value||0,fmt:$('vc5Fmt').value,mode:$('vc5Mode').value,mb:Math.max(1,+$('vc5Mb').value||50)}}
   function targetBytes(x){let c=cfg();return c.mode==='mb'?Math.min(x.file.size*.98,c.mb*1024*1024):x.file.size*c.pct/100}
   function dims(x){let h=cfg().h;if(!h||x.h<=h)return [x.w-(x.w%2),x.h-(x.h%2)];let w=Math.round(x.w*h/x.h);return [Math.max(2,w-(w%2)),Math.max(2,h-(h%2))]}
-  function outputMime(){let f=cfg().fmt;let mp=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E','video/mp4'];let wb=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];let all=f==='mp4'?mp:f==='webm'?wb:[...mp,...wb];return all.find(m=>MediaRecorder.isTypeSupported(m))||''}
-  function bitrate(x){let c=cfg(),t=targetBytes(x),total=Math.max(300000,t*8/Math.max(.1,x.d)*.94),audio=c.a*1000,video=Math.max(220000,(total-audio)*2.3);return {video,audio,total,target:t}}
+  function outputMime(force=''){let f=force||cfg().fmt;let mp=['video/mp4;codecs=avc1.42E01E,mp4a.40.2','video/mp4;codecs=avc1.42E01E','video/mp4'];let wb=['video/webm;codecs=vp9,opus','video/webm;codecs=vp8,opus','video/webm'];let all=f==='mp4'?mp:f==='webm'?wb:[...mp,...wb];return all.find(m=>MediaRecorder.isTypeSupported(m))||''}
+  function bitrate(x,mime='',scale=1){let c=cfg(),t=targetBytes(x),dur=Math.max(.1,x.d),audio=c.a*1000,origTotal=x.file.size*8/dur,targetTotal=Math.max(300000,t*8/dur),video=Math.max(180000,(targetTotal-audio)*scale);video=Math.min(video,Math.max(180000,origTotal*.95-audio));return {video,audio,total:targetTotal,target:t,origTotal}}
   function pctActual(x){return x.out?Math.round(x.out.size/x.file.size*100):null}
   function updateSummary(){let c=cfg(),sm=$('vc5Summary'); if(c.mode==='percent'){sm.innerHTML=`<span class="vc5-big">${c.pct}%</span> dung lượng gốc • giảm khoảng ${100-c.pct}%`;sm.className='vc5-summary'+(c.pct<50?' warn':'')} else {sm.innerHTML=`Tối đa <span class="vc5-big">${c.mb} MB</span> mỗi video`;sm.className='vc5-summary'} }
-  function qualityWarn(x){let b=bitrate(x).video,[w,h]=dims(x),bpp=b/Math.max(1,w*h);if(h>=1080&&b<2500000)return 'Bitrate khá thấp cho 1080p — có thể mờ';if(h>=720&&b<1200000)return 'Bitrate khá thấp cho 720p — có thể mờ';if(bpp<1.2)return 'Mức nén mạnh — nên tăng % nếu cần giữ nét';return ''}
+  function qualityWarn(x){let b=bitrate(x,outputMime()).video,[w,h]=dims(x),bpp=b/Math.max(1,w*h);if(h>=1080&&b<2500000)return 'Bitrate khá thấp cho 1080p — có thể mờ';if(h>=720&&b<1200000)return 'Bitrate khá thấp cho 720p — có thể mờ';if(bpp<1.2)return 'Mức nén mạnh — nên tăng % nếu cần giữ nét';return ''}
   function render(){
-    updateSummary(); let L=$('vc5List'); $('vc5Stats').textContent=`${S.items.length} video • gốc ${fmt(S.items.reduce((a,x)=>a+x.file.size,0))} • đã nén ${fmt(S.items.reduce((a,x)=>a+(x.out?.size||0),0))}`; $('vc5Down').disabled=!S.items.some(x=>x.out&&x.valid);
+    updateSummary(); let L=$('vc5List'); $('vc5Stats').textContent=`${S.items.length} video • gốc ${fmt(S.items.reduce((a,x)=>a+x.file.size,0))} • đã nén ${fmt(S.items.reduce((a,x)=>a+(x.out&&x.valid?x.out.size:0),0))}`; $('vc5Down').disabled=!S.items.some(x=>x.out&&x.valid);
     if(!S.items.length){L.innerHTML='<div class="vc5-empty"><div><b>Chưa có video</b><br><span class="vc5-note">Chọn video ở bên trái. Sau khi nén sẽ có preview trước/sau và kiểm tra thời lượng ở đây.</span></div></div>';return}
     L.innerHTML=S.items.map((x,i)=>{
       let t=targetBytes(x),pa=pctActual(x),warn=qualityWarn(x),res=dims(x),status=x.err?`<div class="vc5-result err">❌ ${esc(x.err)}</div>`:x.work?`<div class="vc5-result">⏳ Đang nén ${Math.round(x.progress||0)}%</div>`:x.out&&x.valid?`<div class="vc5-result ok">✓ ${fmt(x.file.size)} → <b>${fmt(x.out.size)}</b> • còn ${pa}% • thời lượng ${x.outDur.toFixed(2)}s / gốc ${x.d.toFixed(2)}s</div>`:x.out?'<div class="vc5-result err">❌ File đầu ra không hợp lệ</div>':'<div class="vc5-result">Chưa xử lý</div>';
-      return `<div class="vc5-item" data-i="${i}"><div class="vc5-head"><div><div class="vc5-name">${esc(x.name)}</div><div class="vc5-badges"><span class="vc5-badge">Gốc ${fmt(x.file.size)}</span><span class="vc5-badge">${x.w}×${x.h}</span><span class="vc5-badge">${fmtDur(x.d)}</span><span class="vc5-badge">Mục tiêu ${fmt(t)}</span><span class="vc5-badge">Ra ${res[0]}×${res[1]}</span>${warn?`<span class="vc5-badge warn">⚠ ${esc(warn)}</span>`:''}${x.out&&x.valid?'<span class="vc5-badge ok">✓ đủ thời lượng</span>':''}</div></div></div>${status}<div class="vc5-previews"><div class="vc5-preview"><label>Video gốc</label><video controls preload="metadata" src="${x.srcUrl}"></video></div><div class="vc5-preview"><label>Sau nén</label>${x.outUrl&&x.valid?`<video controls preload="metadata" src="${x.outUrl}"></video>`:'<div class="vc5-empty-preview">Chưa có kết quả</div>'}</div></div><div class="vc5-mini"><button class="btn tiny vc5One" ${S.running?'disabled':''}>${x.out?'Nén lại từ file gốc':'Nén video này'}</button><button class="btn tiny vc5Get" ${x.out&&x.valid?'':'disabled'}>Tải file</button><button class="btn tiny vc5Remove" ${S.running?'disabled':''}>Bỏ video</button></div></div>`
+      return `<div class="vc5-item" data-i="${i}"><div class="vc5-head"><div><div class="vc5-name">${esc(x.name)}</div><div class="vc5-badges"><span class="vc5-badge">Gốc ${fmt(x.file.size)}</span><span class="vc5-badge">${x.w}×${x.h}</span><span class="vc5-badge">${fmtDur(x.d)}</span><span class="vc5-badge">Mục tiêu ${fmt(t)}</span><span class="vc5-badge">Ra ${res[0]}×${res[1]}</span>${warn?`<span class="vc5-badge warn">⚠ ${esc(warn)}</span>`:''}${x.out&&x.valid?'<span class="vc5-badge ok">✓ đủ thời lượng</span>':''}${x.codecNote?`<span class="vc5-badge warn">${esc(x.codecNote)}</span>`:''}</div></div></div>${status}<div class="vc5-previews"><div class="vc5-preview"><label>Video gốc</label><video controls preload="metadata" src="${x.srcUrl}"></video></div><div class="vc5-preview"><label>Sau nén</label>${x.outUrl&&x.valid?`<video controls preload="metadata" src="${x.outUrl}"></video>`:'<div class="vc5-empty-preview">Chưa có kết quả</div>'}</div></div><div class="vc5-mini"><button class="btn tiny vc5One" ${S.running?'disabled':''}>${x.out?'Nén lại từ file gốc':'Nén video này'}</button><button class="btn tiny vc5Get" ${x.out&&x.valid?'':'disabled'}>Tải file</button><button class="btn tiny vc5Remove" ${S.running?'disabled':''}>Bỏ video</button></div></div>`
     }).join('');
     $$('.vc5-item').forEach(el=>{let i=+el.dataset.i;el.querySelector('.vc5One').onclick=()=>runOne(i);el.querySelector('.vc5Get').onclick=()=>downloadOne(i);el.querySelector('.vc5Remove').onclick=()=>removeOne(i)});
   }
   function probeUrl(url,timeout=15000){return new Promise((ok,no)=>{let v=document.createElement('video'),done=false,tm=setTimeout(()=>finish(no,Error('Không đọc được metadata video')),timeout);function finish(fn,arg){if(done)return;done=true;clearTimeout(tm);v.removeAttribute('src');v.load();fn(arg)}v.preload='metadata';v.onloadedmetadata=()=>finish(ok,{d:v.duration,w:v.videoWidth,h:v.videoHeight});v.onerror=()=>finish(no,Error('Codec video không được trình duyệt hỗ trợ'));v.src=url})}
-  async function addFiles(files){for(const file of files){if(!file.type.startsWith('video/')&&!/\.(mp4|mov|m4v|webm)$/i.test(file.name))continue;let srcUrl=URL.createObjectURL(file);try{let m=await probeUrl(srcUrl);S.items.push({file,name:file.name,srcUrl,d:m.d,w:m.w,h:m.h,out:null,outUrl:'',outDur:0,mime:'',progress:0,work:false,err:'',valid:false})}catch(e){URL.revokeObjectURL(srcUrl);alert(`${file.name}: ${e.message}`)}}render();setStatus(`Đã nạp ${S.items.length} video.`)}
+  async function addFiles(files){for(const file of files){if(!file.type.startsWith('video/')&&!/\.(mp4|mov|m4v|webm)$/i.test(file.name))continue;let srcUrl=URL.createObjectURL(file);try{let m=await probeUrl(srcUrl);S.items.push({file,name:file.name,srcUrl,d:m.d,w:m.w,h:m.h,out:null,outUrl:'',outDur:0,mime:'',progress:0,work:false,err:'',valid:false,codecNote:''})}catch(e){URL.revokeObjectURL(srcUrl);alert(`${file.name}: ${e.message}`)}}render();setStatus(`Đã nạp ${S.items.length} video.`)}
   async function probeBlob(blob){let u=URL.createObjectURL(blob);try{let m=await probeUrl(u);return {...m,url:u}}catch(e){URL.revokeObjectURL(u);throw e}}
   function freshVideo(file){let url=URL.createObjectURL(file),v=document.createElement('video');v.preload='auto';v.playsInline=true;v.muted=true;v.src=url;return {v,url}}
   async function waitReady(v){await new Promise((ok,no)=>{let done=false,tm=setTimeout(()=>finish(no,Error('Video tải quá lâu/codec không hỗ trợ')),20000);function finish(fn,arg){if(done)return;done=true;clearTimeout(tm);fn(arg)}v.onloadeddata=()=>finish(ok);v.onerror=()=>finish(no,Error('Không đọc được dữ liệu video'))});if(v.currentTime>0.01){v.currentTime=0;await new Promise(r=>{let tm=setTimeout(r,1500);v.onseeked=()=>{clearTimeout(tm);r()}})}}
-  async function encode(x,idx,total){
-    const c=cfg(), mt=outputMime(); if(!mt)throw Error('Chrome không hỗ trợ định dạng xuất đã chọn');
+  async function calibrateBitrate(x,idx,total,mt){
+    if(x.d<5)return bitrate(x,mt).video;
+    const c=cfg(),base=bitrate(x,mt).video,desired=targetBytes(x)*8/Math.max(.1,x.d),sampleSec=Math.min(3.5,Math.max(2,x.d*.12));
+    const start=Math.max(0,Math.min(x.d*.18,Math.max(0,x.d-sampleSec-.5)));
+    const {v,url}=freshVideo(x.file);await waitReady(v);const [ow,oh]=dims(x);let ac=null,stream=null,rawStream=null,drawTimer=null;
+    try{
+      if(start>.05){v.currentTime=start;await new Promise(r=>{let done=0,tm=setTimeout(()=>{if(done)return;done=1;r()},1800);v.onseeked=()=>{if(done)return;done=1;clearTimeout(tm);r()}})}
+      let videoTrack=null;const sameSize=ow===x.w-(x.w%2)&&oh===x.h-(x.h%2),canDirect=typeof v.captureStream==='function'&&sameSize;
+      if(canDirect){rawStream=v.captureStream();videoTrack=rawStream.getVideoTracks()[0]||null}
+      if(!videoTrack){let canvas=document.createElement('canvas');canvas.width=ow;canvas.height=oh;let cx=canvas.getContext('2d',{alpha:false});stream=canvas.captureStream(c.fps);videoTrack=stream.getVideoTracks()[0];drawTimer=setInterval(()=>{try{cx.drawImage(v,0,0,ow,oh)}catch(_){}},Math.max(16,1000/c.fps))}
+      let audioTracks=[];if(c.a>0){try{let AC=window.AudioContext||window.webkitAudioContext;ac=new AC();await ac.resume();let source=ac.createMediaElementSource(v),dest=ac.createMediaStreamDestination(),gain=ac.createGain();gain.gain.value=0;source.connect(dest);source.connect(gain);gain.connect(ac.destination);audioTracks=dest.stream.getAudioTracks()}catch(e){}}
+      const ms=new MediaStream([videoTrack,...audioTracks]),opts={mimeType:mt,videoBitsPerSecond:base};if(c.a>0)opts.audioBitsPerSecond=c.a*1000;
+      const rec=new MediaRecorder(ms,opts),chunks=[];let timer=null,aborted=false;
+      setStatus(`Đang đo bitrate thực tế ${idx+1}/${total}: ${x.name} • ~${sampleSec.toFixed(1)} giây`);
+      const blob=await new Promise(async(resolve,reject)=>{rec.ondataavailable=e=>{if(e.data?.size)chunks.push(e.data)};rec.onerror=()=>reject(Error('Không đo được bitrate codec'));rec.onstop=()=>{clearInterval(timer);if(aborted)return reject(Object.assign(Error('Đã dừng'),{name:'AbortError'}));let b=new Blob(chunks,{type:mt});b.size?resolve(b):reject(Error('Không đo được bitrate codec'))};timer=setInterval(()=>{if(v.currentTime>=start+sampleSec||v.ended){try{if(rec.state!=='inactive')rec.stop()}catch(_){}}},80);S.stopCurrent=()=>{aborted=true;try{v.pause()}catch(_){}try{if(rec.state!=='inactive')rec.stop()}catch(_){}};try{rec.start(500);await v.play()}catch(e){clearInterval(timer);reject(Error('Không chạy được bước đo bitrate'))}});
+      const mediaSec=Math.max(.5,Math.min(sampleSec,Math.max(0,v.currentTime-start))),actual=blob.size*8/mediaSec;let factor=desired/Math.max(1,actual);factor=Math.max(.3,Math.min(3.5,factor));const adjusted=Math.max(180000,Math.min(100000000,base*factor));console.info('Video calibration',{name:x.name,base,actual,desired,factor,adjusted});return adjusted;
+    }finally{clearInterval(drawTimer);S.stopCurrent=null;try{v.pause()}catch(_){}try{rawStream?.getTracks().forEach(t=>t.stop())}catch(_){}try{stream?.getTracks().forEach(t=>t.stop())}catch(_){}try{ac?.close()}catch(_){}URL.revokeObjectURL(url)}
+  }
+  async function encode(x,idx,total,forceFmt=''){
+    const c=cfg(), mt=outputMime(forceFmt); if(!mt)throw Error('Chrome không hỗ trợ định dạng xuất đã chọn');
+    const tunedVideo=await calibrateBitrate(x,idx,total,mt);
     const {v,url}=freshVideo(x.file); await waitReady(v); const [ow,oh]=dims(x); let ac=null,stream=null,canvas=null,drawTimer=null,rawStream=null;
     try{
       let videoTrack=null;
@@ -100,7 +119,7 @@
       if(!videoTrack){canvas=document.createElement('canvas');canvas.width=ow;canvas.height=oh;let cx=canvas.getContext('2d',{alpha:false});stream=canvas.captureStream(c.fps);videoTrack=stream.getVideoTracks()[0];drawTimer=setInterval(()=>{try{cx.drawImage(v,0,0,ow,oh)}catch(_){}},Math.max(16,1000/c.fps))}
       let audioTracks=[];
       if(c.a>0){try{let AC=window.AudioContext||window.webkitAudioContext;ac=new AC();await ac.resume();let source=ac.createMediaElementSource(v),dest=ac.createMediaStreamDestination(),gain=ac.createGain();gain.gain.value=0;source.connect(dest);source.connect(gain);gain.connect(ac.destination);audioTracks=dest.stream.getAudioTracks()}catch(e){console.warn('Audio capture unavailable',e)}}
-      const ms=new MediaStream([videoTrack,...audioTracks]); const br=bitrate(x); const opts={mimeType:mt,videoBitsPerSecond:br.video}; if(c.a>0)opts.audioBitsPerSecond=br.audio;
+      const ms=new MediaStream([videoTrack,...audioTracks]); const br=bitrate(x,mt); br.video=tunedVideo; const opts={mimeType:mt,videoBitsPerSecond:br.video}; if(c.a>0)opts.audioBitsPerSecond=br.audio;
       const rec=new MediaRecorder(ms,opts),chunks=[]; let aborted=false,settled=false,progressTimer=null,hardTimer=null;
       let blob=await new Promise(async(resolve,reject)=>{
         const cleanup=()=>{clearInterval(progressTimer);clearTimeout(hardTimer);S.stopCurrent=null};
@@ -115,12 +134,13 @@
         try{rec.start(1000);await v.play()}catch(e){aborted=true;try{if(rec.state!=='inactive')rec.stop()}catch(_){}fail(Error('Chrome không phát được video nguồn/codec này'))}
       });
       const pm=await probeBlob(blob); const tol=Math.max(.75,x.d*.03), delta=Math.abs(pm.d-x.d); if(delta>tol){URL.revokeObjectURL(pm.url);throw Error(`Sai thời lượng: gốc ${x.d.toFixed(2)}s nhưng file nén ${pm.d.toFixed(2)}s. Kết quả đã bị chặn, không cho tải.`)}
+      const target=targetBytes(x),source=x.file.size,tooBig=blob.size>=source*.98,farOver=target>0&&blob.size>target*1.30;if(tooBig||farOver){URL.revokeObjectURL(pm.url);const e=Error(tooBig?`Kết quả ${fmt(blob.size)} không nhỏ hơn file gốc ${fmt(source)}. Tool đã chặn, không coi đây là nén thành công.`:`Kết quả ${fmt(blob.size)} vượt quá xa mục tiêu ${fmt(target)}.`);e.code=tooBig?'OVERSIZE':'MISSTARGET';e.usedMime=mt;throw e}
       return {blob,mime:mt,dur:pm.d,url:pm.url,w:pm.w,h:pm.h};
     } finally {
       clearInterval(drawTimer);try{v.pause()}catch(_){}try{rawStream?.getTracks().forEach(t=>t.stop())}catch(_){}try{stream?.getTracks().forEach(t=>t.stop())}catch(_){}try{ac?.close()}catch(_){}URL.revokeObjectURL(url)
     }
   }
-  async function runItem(i,idx=0,total=1){let x=S.items[i];if(!x)return; if(x.outUrl){URL.revokeObjectURL(x.outUrl);x.outUrl=''}x.out=null;x.valid=false;x.err='';x.work=true;x.progress=0;render();try{let r=await encode(x,idx,total);x.out=r.blob;x.outUrl=r.url;x.outDur=r.dur;x.mime=r.mime;x.valid=true;x.progress=100}catch(e){if(e.name==='AbortError')throw e;x.err=e.message}finally{x.work=false;render()}}
+  async function runItem(i,idx=0,total=1){let x=S.items[i];if(!x)return;if(x.outUrl){URL.revokeObjectURL(x.outUrl);x.outUrl=''}x.out=null;x.valid=false;x.err='';x.codecNote='';x.work=true;x.progress=0;render();try{let r;try{r=await encode(x,idx,total)}catch(e){let canFallback=(e.code==='OVERSIZE'||e.code==='MISSTARGET')&&cfg().fmt==='auto'&&outputMime('webm')&&!(e.usedMime||'').includes('webm');if(!canFallback)throw e;setStatus(`MP4 không đạt mục tiêu với ${x.name}. Đang thử WebM từ file gốc...`);x.codecNote='MP4 vượt dung lượng → tự chuyển WebM';r=await encode(x,idx,total,'webm')}x.out=r.blob;x.outUrl=r.url;x.outDur=r.dur;x.mime=r.mime;x.valid=true;x.progress=100}catch(e){if(e.name==='AbortError')throw e;x.err=e.message}finally{x.work=false;render()}}
   async function runOne(i){if(S.running)return;S.running=true;S.cancel=false;$('vc5Stop').disabled=false;try{await runItem(i,0,1);let x=S.items[i];setStatus(x?.err?`Lỗi: ${x.err}`:`Hoàn tất ${x?.name||''}`)}catch(e){if(e.name==='AbortError')setStatus('Đã dừng.')}finally{S.running=false;$('vc5Stop').disabled=true;$('vc5Bar').style.width='0%';render()}}
   async function runAll(){if(S.running||!S.items.length)return;S.running=true;S.cancel=false;$('vc5Run').disabled=true;$('vc5Stop').disabled=false;let done=0;try{for(let i=0;i<S.items.length;i++){if(S.cancel)break;try{await runItem(i,i,S.items.length);if(S.items[i].valid)done++}catch(e){if(e.name==='AbortError'){S.cancel=true;break}}}}finally{S.running=false;$('vc5Run').disabled=false;$('vc5Stop').disabled=true;$('vc5Bar').style.width='0%';setStatus(S.cancel?'Đã dừng.':`Hoàn tất ${done}/${S.items.length} video.`);render()}}
   function outName(x){let ext=(x.mime||'').includes('mp4')?'mp4':'webm';return x.name.replace(/\.[^.]+$/,'')+`_compressed.${ext}`}
@@ -138,5 +158,5 @@
   $$('.vc5-ratio').forEach(b=>b.onclick=()=>setPct(b.dataset.r));$('vc5Pct').oninput=e=>setPct(e.target.value);$('vc5PctNum').oninput=e=>setPct(e.target.value);
   ['vc5H','vc5Fps','vc5Audio','vc5Fmt','vc5Mb'].forEach(id=>$(id).oninput=render);$('vc5Mode').onchange=()=>{$('vc5MbWrap').style.display=$('vc5Mode').value==='mb'?'grid':'none';render()};
   $('vc5Run').onclick=runAll;$('vc5Stop').onclick=()=>{S.cancel=true;S.stopCurrent?.()};$('vc5Clear').onclick=clearAll;$('vc5Down').onclick=downloadAll;
-  window.videoCompressor={S,addFiles,runAll,runOne,show};render();
+  window.videoCompressor={S,addFiles,runAll,runOne,show,version:'R19.6-calibrated'};render();
 })();
