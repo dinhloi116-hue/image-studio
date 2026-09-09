@@ -19,3 +19,4 @@ jobs:
           git add assets/video-compressor.js index.html direct/index.html
           git diff --cached --quiet || git commit -m 'R19.7: enforce hard video size cap'
           git push
+# retry-r197-2
