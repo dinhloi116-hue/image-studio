@@ -49,6 +49,6 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm -f .github/r199/*.b64
-          git add assets/video-compressor-r199.js assets/ffmpeg-worker-r199.js assets/ffmpeg-core.js assets/ffmpeg-core.wasm index.html direct/index.html direct/version.txt .github/r199
+          git add assets/video-compressor-r199.js assets/ffmpeg-worker-r199.js assets/ffmpeg-core.js assets/ffmpeg-core.wasm index.html direct/index.html direct/version.txt
           git commit -m 'R19.9: mux original audio with FFmpeg' || exit 0
           git push
