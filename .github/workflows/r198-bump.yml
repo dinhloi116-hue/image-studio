@@ -1,0 +1,31 @@
+name: R19.8 audio hard-cap UI
+on:
+  push:
+    paths:
+      - '.github/workflows/r198-bump.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump video compressor asset
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          for f in ['index.html','direct/index.html']:
+              p=Path(f)
+              s=p.read_text(encoding='utf-8')
+              s=s.replace('video-compressor.js?v=r197-hard-cap','video-compressor.js?v=r198-audio-hardcap')
+              p.write_text(s,encoding='utf-8')
+          PY
+      - name: Commit
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html direct/index.html
+          git diff --cached --quiet || git commit -m 'R19.8: use audio-preserving video compressor'
+          git push
