@@ -1,0 +1,23 @@
+name: Bump R19.5 video asset
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bump-r195-video-stable.yml'
+permissions:
+  contents: write
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bump asset version on both routes
+        run: |
+          sed -i 's/video-compressor.js?v=r194-percent/video-compressor.js?v=r195-stable/g' index.html direct/index.html
+      - name: Commit
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add index.html direct/index.html
+          git diff --cached --quiet || git commit -m 'R19.5: stable video UI and duration-safe compression'
+          git push
