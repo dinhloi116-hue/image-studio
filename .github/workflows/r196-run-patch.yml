@@ -1,0 +1,21 @@
+name: R19.6 apply video patch
+on:
+  push:
+    paths:
+      - '.github/workflows/r196-run-patch.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply patch
+        run: python .github/scripts/r196_patch.py
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/video-compressor.js index.html direct/index.html
+          git diff --cached --quiet || git commit -m 'R19.6: calibrate bitrate and block oversized outputs'
+          git push
