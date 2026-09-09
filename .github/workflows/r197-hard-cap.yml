@@ -1,0 +1,21 @@
+name: R19.7 hard cap video
+on:
+  push:
+    paths:
+      - '.github/workflows/r197-hard-cap.yml'
+permissions:
+  contents: write
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply R19.7 patch
+        run: python .github/r197_patch.py
+      - name: Commit changes
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add assets/video-compressor.js index.html direct/index.html
+          git diff --cached --quiet || git commit -m 'R19.7: enforce hard video size cap'
+          git push
