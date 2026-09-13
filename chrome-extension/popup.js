@@ -1,4 +1,5 @@
 const UPDATE_URL='https://raw.githubusercontent.com/dinhloi116-hue/image-studio/main/chrome-extension/update.json';
+const VERSION_URL='https://dinhloi116-hue.github.io/image-studio/direct/version.txt';
 const $=id=>document.getElementById(id);
 let remote=null;
 function setStatus(text,kind=''){ $('status').textContent=text; $('status').className='status'+(kind?' '+kind:''); }
@@ -9,6 +10,7 @@ async function fetchUpdate(){
     const r=await fetch(UPDATE_URL+'?t='+Date.now(),{cache:'no-store'});
     if(!r.ok)throw new Error('HTTP '+r.status);
     remote=await r.json();
+    try{const vr=await fetch(VERSION_URL+'?t='+Date.now(),{cache:'no-store'});if(vr.ok)remote.tool_version=(await vr.text()).trim()}catch(_){}
     const local=chrome.runtime.getManifest().version;
     const extNew=remote.extension_version&&cmp(remote.extension_version,local)>0;
     $('download').classList.toggle('hidden',!extNew);
