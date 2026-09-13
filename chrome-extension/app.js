@@ -6,8 +6,14 @@ let meta={pages_url:DEFAULT_APP,tool_version:'latest'};
 function fitFrame(){
   const hh=Math.ceil(header?.getBoundingClientRect().height||48);
   const nh=notice&&!notice.classList.contains('hidden')?Math.ceil(notice.getBoundingClientRect().height||0):0;
+  const top=hh+nh;
+  const h=Math.max(240,window.innerHeight-top);
   document.documentElement.style.setProperty('--header-h',hh+'px');
-  document.documentElement.style.setProperty('--frame-top',(hh+nh)+'px');
+  document.documentElement.style.setProperty('--frame-top',top+'px');
+  // iframe is a replaced element: set a real pixel height as well as the CSS calc.
+  tool.style.top=top+'px';
+  tool.style.height=h+'px';
+  tool.style.maxHeight=h+'px';
 }
 function msg(t,kind=''){
   notice.textContent=t;notice.className='notice'+(kind?' '+kind:'');fitFrame();
