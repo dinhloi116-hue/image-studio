@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Image Studio</title>
+<link rel="stylesheet" href="app.css">
+</head>
+<body>
+<header>
+  <div class="left"><b>Image Studio</b><span id="version">Đang kiểm tra Git...</span></div>
+  <div class="actions">
+    <button id="refresh">Làm mới</button>
+    <button id="update" class="green">Cập nhật từ GitHub</button>
+    <button id="external">Mở ngoài tab</button>
+  </div>
+</header>
+<div id="notice" class="notice hidden"></div>
+<iframe id="tool" title="Image Studio" allow="clipboard-read; clipboard-write; fullscreen"></iframe>
+<script src="app.js"></script>
+</body>
+</html>
