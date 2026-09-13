@@ -1,0 +1,38 @@
+name: Sync Halftone To Local Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/halftone-r200.js'
+      - 'assets/halftone-zoom-r202.js'
+      - 'assets/halftone-help-r203.js'
+      - '.github/workflows/sync-halftone-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Sync halftone assets
+        run: |
+          set -euo pipefail
+          mkdir -p chrome-extension/assets
+          cp assets/halftone-r200.js chrome-extension/assets/halftone-r200.js
+          cp assets/halftone-zoom-r202.js chrome-extension/assets/halftone-zoom-r202.js
+          cp assets/halftone-help-r203.js chrome-extension/assets/halftone-help-r203.js
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add chrome-extension/assets/halftone-r200.js chrome-extension/assets/halftone-zoom-r202.js chrome-extension/assets/halftone-help-r203.js
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Sync halftone assets to Chrome extension'
+          git push
