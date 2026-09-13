@@ -1,0 +1,54 @@
+name: Build Chrome Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'chrome-extension/**'
+      - '.github/workflows/build-chrome-extension.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate extension
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m json.tool chrome-extension/manifest.json >/dev/null
+          python -m json.tool chrome-extension/update.json >/dev/null
+          node --check chrome-extension/popup.js
+          node --check chrome-extension/app.js
+          grep -q '"manifest_version": 3' chrome-extension/manifest.json
+
+      - name: Build ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf build/Image-Studio-Chrome dist/Image-Studio-Chrome-Extension.zip
+          mkdir -p build/Image-Studio-Chrome dist
+          cp -R chrome-extension/. build/Image-Studio-Chrome/
+          cd build
+          zip -qr ../dist/Image-Studio-Chrome-Extension.zip Image-Studio-Chrome
+          cd ..
+          test -s dist/Image-Studio-Chrome-Extension.zip
+          unzip -t dist/Image-Studio-Chrome-Extension.zip >/dev/null
+
+      - name: Publish latest ZIP to repository
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -f dist/Image-Studio-Chrome-Extension.zip
+          if git diff --cached --quiet; then
+            echo 'ZIP unchanged.'
+            exit 0
+          fi
+          git commit -m 'Build latest Chrome extension ZIP'
+          git push
