@@ -35,6 +35,18 @@ function loadHalftoneModule(){
   }catch(e){console.error('Halftone module loader',e)}
 }
 
+function loadHalftoneZoomModule(){
+  try{
+    if(window.__HALFTONE_ZOOM_R202 || document.getElementById('dhlHalftoneZoomModule'))return;
+    const s=document.createElement('script');
+    s.id='dhlHalftoneZoomModule';
+    s.src=chrome.runtime.getURL('assets/halftone-zoom-r202.js')+'?v=r202';
+    s.async=false;
+    s.onerror=()=>console.error('Không tải được module phóng to ảnh tram.');
+    document.head.appendChild(s);
+  }catch(e){console.error('Halftone zoom loader',e)}
+}
+
 async function readLocal(){try{local=await (await fetch(chrome.runtime.getURL('local-version.json')+'?t='+Date.now(),{cache:'no-store'})).json()}catch(e){local={}}}
 function box(text,buttons=[]){
   let old=document.getElementById('dhlGitUpdateBox');if(old)old.remove();
@@ -61,7 +73,7 @@ function add(){
   if(document.getElementById('dhlGitUpdateBtn'))return;
   const b=document.createElement('button');b.id='dhlGitUpdateBtn';b.className='btn';b.textContent='↻ Cập nhật từ Git';b.title='Kiểm tra bản mới. Sau khi Pull origin trong GitHub Desktop, bấm áp dụng để reload extension.';b.onclick=check;host.appendChild(b);
 }
-installCanvasReadbackFix();
-loadHalftoneModule();
-readLocal().then(add);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installCanvasReadbackFix();loadHalftoneModule();add()});else add();
+function installExtraModules(){installCanvasReadbackFix();loadHalftoneModule();loadHalftoneZoomModule()}
+installExtraModules();
+readLocal().then(add);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installExtraModules();add()});else add();
 })();
