@@ -13,5 +13,6 @@
   });
   load('video-compressor-core-r199.js?v=r199-core')
     .then(()=>load('halftone-r200.js?v=r200'))
+    .then(()=>load('halftone-zoom-r202.js?v=r202'))
     .catch(err=>{console.error('Image Studio module loader:',err);});
 })();
