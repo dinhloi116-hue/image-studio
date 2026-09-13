@@ -1,20 +1,21 @@
 {
   "manifest_version": 3,
-  "name": "Image Studio DHL",
-  "version": "1.0.2",
-  "version_name": "1.0.2 - R19.9 - Fix iframe height",
-  "description": "Mở Image Studio và cập nhật tool trực tiếp từ GitHub.",
+  "name": "Image Studio DHL - Local",
+  "version": "2.0.0",
+  "version_name": "2.0.0 • R19.9-FFMPEG-AUDIO",
+  "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
     "downloads",
     "tabs"
   ],
   "host_permissions": [
-    "https://dinhloi116-hue.github.io/*",
     "https://raw.githubusercontent.com/*"
   ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "action": {
-    "default_title": "Image Studio",
-    "default_popup": "popup.html"
+    "default_title": "Mở Image Studio DHL"
   }
 }
