@@ -27,15 +27,39 @@
     @media(max-width:700px){.ht2-guide-buttons{grid-template-columns:1fr}.ht2-help-q{width:20px;height:20px}}
   `;
   document.head.appendChild(style);
+
   const floater=document.createElement('div');floater.id='ht2HelpFloat';document.body.appendChild(floater);
   let hideTimer=0;
-  function showTip(btn,text){clearTimeout(hideTimer);floater.textContent=text;floater.style.display='block';requestAnimationFrame(()=>{const r=btn.getBoundingClientRect(),fr=floater.getBoundingClientRect(),w=fr.width||340,h=fr.height||90;let left=clamp(r.left,12,window.innerWidth-w-12),top=r.bottom+8;if(top+h>window.innerHeight-12)top=Math.max(12,r.top-h-8);floater.style.left=left+'px';floater.style.top=top+'px'})}
+  function showTip(btn,text){
+    clearTimeout(hideTimer);floater.textContent=text;floater.style.display='block';
+    requestAnimationFrame(()=>{const r=btn.getBoundingClientRect(),fr=floater.getBoundingClientRect(),w=fr.width||340,h=fr.height||90;let left=clamp(r.left,12,window.innerWidth-w-12),top=r.bottom+8;if(top+h>window.innerHeight-12)top=Math.max(12,r.top-h-8);floater.style.left=left+'px';floater.style.top=top+'px'});
+  }
   function hideTip(){hideTimer=setTimeout(()=>floater.style.display='none',80)}
-  function addQ(target,text){if(!target||target.querySelector?.('.ht2-help-q'))return;const q=document.createElement('button');q.type='button';q.className='ht2-help-q';q.textContent='?';q.setAttribute('aria-label','Giải thích thông số');q.addEventListener('mouseenter',()=>showTip(q,text));q.addEventListener('mouseleave',hideTip);q.addEventListener('focus',()=>showTip(q,text));q.addEventListener('blur',hideTip);q.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showTip(q,text)});target.appendChild(q)}
+  function addQ(target,text){
+    if(!target||target.querySelector?.('.ht2-help-q'))return;
+    const q=document.createElement('button');q.type='button';q.className='ht2-help-q';q.textContent='?';q.setAttribute('aria-label','Giải thích thông số');
+    q.addEventListener('mouseenter',()=>showTip(q,text));q.addEventListener('mouseleave',hideTip);q.addEventListener('focus',()=>showTip(q,text));q.addEventListener('blur',hideTip);q.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();showTip(q,text)});
+    target.appendChild(q);
+  }
   function presetClick(id){const b=document.querySelector(`.ht2-preset[data-p="${id}"]`);if(b){b.click();return true}return false}
   function current(){return{lpi:+$('ht2LpiN')?.value||0,min:+$('ht2Min')?.value||0,str:+$('ht2StrengthN')?.value||0,shape:$('ht2Shape')?.value||'',dpi:+$('ht2Dpi')?.value||0}}
-  function updateGuide(){const el=$('ht2GuideState');if(!el)return;const c=current();let text='',cls='ht2-guide-state';if(c.lpi>=55||c.min<.30){text=`⚠ Đang để tram rất mịn (${c.lpi||'—'} LPI, lỗ tối thiểu ${c.min?c.min.toFixed(2):'—'} mm). Nếu chưa test film/mực/powder, nên quay về Cân bằng 40 để tránh bít lỗ hoặc mất tram.`;cls+=' warn'}else if(c.lpi>=35&&c.lpi<=45&&c.min>=.35&&c.min<=.60){text='✓ Thông số hiện tại nằm trong vùng khởi đầu hợp lý cho DTF. Nếu chưa biết chọn gì, cứ dùng Cân bằng 40 rồi test 1 mẫu trước.';cls+=' ok'}else{text='Gợi ý: bắt đầu bằng Cân bằng 40. Nếu tram hay bít/mất lỗ → An toàn 35. Nếu máy giữ dot tốt và cần nét hơn → Nét hơn 45.'}el.className=cls;el.textContent=text}
-  function install(){const sec=$('halftoneSection');if(!sec||!$('ht2Mode'))return false;if(sec.dataset.htHelp203==='1')return true;sec.dataset.htHelp203='1';const normal=['ht2Mode','ht2Lpi','ht2Angle','ht2Shape','ht2Dpi','ht2Min','ht2Strength','ht2Gamma'];normal.forEach(id=>{const el=$(id),label=el?.closest('label'),title=label?.querySelector(':scope > span');addQ(title,HELP[id])});[['ht2Protect','b'],['ht2Invert','b']].forEach(([id])=>{const el=$(id),label=el?.closest('label'),title=label?.querySelector('b');addQ(title,HELP[id])});const heading=[...sec.querySelectorAll('.ht2-card h3')].find(x=>x.textContent.trim()==='Thông số tram');const grid=heading?.parentElement?.querySelector('.ht2-grid');if(grid&&!$('ht2Guide')){const g=document.createElement('div');g.id='ht2Guide';g.className='ht2-guide';g.innerHTML=`<div class="ht2-guide-title">Không biết chọn mức nào? Bắt đầu ở đây</div><div class="ht2-guide-sub"><b>Cân bằng 40</b> là mức khởi đầu nên dùng. Sau khi in test mới tăng/giảm theo máy, film, mực, powder và nhiệt ép của bạn.</div><div class="ht2-guide-buttons"><button type="button" class="ht2-guide-btn" data-p="dtf35">An toàn 35</button><button type="button" class="ht2-guide-btn recommended" data-p="dtf40">✓ Cân bằng 40</button><button type="button" class="ht2-guide-btn" data-p="dtf45">Nét hơn 45</button></div><div id="ht2GuideState" class="ht2-guide-state"></div>`;grid.before(g);g.querySelectorAll('.ht2-guide-btn').forEach(b=>b.onclick=()=>{presetClick(b.dataset.p);setTimeout(updateGuide,20)})}['ht2Lpi','ht2LpiN','ht2Min','ht2Strength','ht2StrengthN','ht2Shape','ht2Dpi'].forEach(id=>$(id)?.addEventListener('input',updateGuide));updateGuide();return true}
+  function updateGuide(){
+    const el=$('ht2GuideState');if(!el)return;const c=current();let text='',cls='ht2-guide-state';
+    if(c.lpi>=55||c.min<.30){text=`⚠ Đang để tram rất mịn (${c.lpi||'—'} LPI, lỗ tối thiểu ${c.min?c.min.toFixed(2):'—'} mm). Nếu chưa test film/mực/powder, nên quay về Cân bằng 40 để tránh bít lỗ hoặc mất tram.`;cls+=' warn'}
+    else if(c.lpi>=35&&c.lpi<=45&&c.min>=.35&&c.min<=.60){text='✓ Thông số hiện tại nằm trong vùng khởi đầu hợp lý cho DTF. Nếu chưa biết chọn gì, cứ dùng Cân bằng 40 rồi test 1 mẫu trước.';cls+=' ok'}
+    else{text='Gợi ý: bắt đầu bằng Cân bằng 40. Nếu tram hay bít/mất lỗ → An toàn 35. Nếu máy giữ dot tốt và cần nét hơn → Nét hơn 45.'}
+    el.className=cls;el.textContent=text;
+  }
+  function install(){
+    const sec=$('halftoneSection');if(!sec||!$('ht2Mode'))return false;if(sec.dataset.htHelp203==='1')return true;sec.dataset.htHelp203='1';
+    const normal=[['ht2Mode','span'],['ht2Lpi','span'],['ht2Angle','span'],['ht2Shape','span'],['ht2Dpi','span'],['ht2Min','span'],['ht2Strength','span'],['ht2Gamma','span']];
+    normal.forEach(([id])=>{const el=$(id),label=el?.closest('label'),title=label?.querySelector(':scope > span');addQ(title,HELP[id])});
+    [['ht2Protect','b'],['ht2Invert','b']].forEach(([id])=>{const el=$(id),label=el?.closest('label'),title=label?.querySelector('b');addQ(title,HELP[id])});
+    const heading=[...sec.querySelectorAll('.ht2-card h3')].find(x=>x.textContent.trim()==='Thông số tram');const grid=heading?.parentElement?.querySelector('.ht2-grid');
+    if(grid&&!$('ht2Guide')){const g=document.createElement('div');g.id='ht2Guide';g.className='ht2-guide';g.innerHTML=`<div class="ht2-guide-title">Không biết chọn mức nào? Bắt đầu ở đây</div><div class="ht2-guide-sub"><b>Cân bằng 40</b> là mức khởi đầu nên dùng. Sau khi in test mới tăng/giảm theo máy, film, mực, powder và nhiệt ép của bạn.</div><div class="ht2-guide-buttons"><button type="button" class="ht2-guide-btn" data-p="dtf35">An toàn 35</button><button type="button" class="ht2-guide-btn recommended" data-p="dtf40">✓ Cân bằng 40</button><button type="button" class="ht2-guide-btn" data-p="dtf45">Nét hơn 45</button></div><div id="ht2GuideState" class="ht2-guide-state"></div>`;grid.before(g);g.querySelectorAll('.ht2-guide-btn').forEach(b=>b.onclick=()=>{presetClick(b.dataset.p);setTimeout(updateGuide,20)})}
+    ['ht2Lpi','ht2LpiN','ht2Min','ht2Strength','ht2StrengthN','ht2Shape','ht2Dpi'].forEach(id=>$(id)?.addEventListener('input',updateGuide));
+    updateGuide();return true;
+  }
   if(!install()){const mo=new MutationObserver(()=>{if(install())mo.disconnect()});mo.observe(document.documentElement,{childList:true,subtree:true});setTimeout(install,500)}
   window.halftoneHelp={install,updateGuide,version:'R20.3'};
 })();
