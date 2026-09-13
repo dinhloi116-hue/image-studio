@@ -8,6 +8,7 @@ function appUrl(force=false){const base=meta.pages_url||DEFAULT_APP;const u=new 
 async function getMeta(){
   try{
     const r=await fetch(UPDATE_URL+'?t='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);meta=await r.json();
+    try{const vr=await fetch(VERSION_URL+'?t='+Date.now(),{cache:'no-store'});if(vr.ok)meta.tool_version=(await vr.text()).trim()}catch(_){}
     ver.textContent=`Git: ${meta.tool_version||'latest'} • Extension ${chrome.runtime.getManifest().version}`;
     await chrome.storage.local.set({lastRemote:meta,lastCheck:Date.now()});return true;
   }catch(e){
