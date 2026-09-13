@@ -108,5 +108,15 @@
   const mo=new MutationObserver(()=>installTargets());
   mo.observe(document.body,{childList:true,subtree:true});
 
-  window.halftoneZoom={open,close,reset,version:'R20.2'};
+  window.halftoneZoom={open,close,reset,version:'R20.3'};
+})();
+
+(()=>{
+  if(window.__HALFTONE_HELP_LOADER_R203)return;
+  window.__HALFTONE_HELP_LOADER_R203=1;
+  try{
+    const here=document.currentScript?.src||'';
+    const src=here?new URL('halftone-help-r203.js',here).href:'assets/halftone-help-r203.js';
+    const s=document.createElement('script');s.src=src;s.async=false;document.head.appendChild(s);
+  }catch(e){console.warn('Halftone help loader:',e)}
 })();
