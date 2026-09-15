@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Image Studio DHL - Local",
-  "version": "2.0.2",
-  "version_name": "2.0.2 • R20.3-HALFTONE-HELP",
+  "version": "2.0.3",
+  "version_name": "2.0.3 • R20.4-STROKE-HQ",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
