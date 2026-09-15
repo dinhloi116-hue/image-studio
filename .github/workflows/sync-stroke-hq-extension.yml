@@ -1,0 +1,65 @@
+name: Sync Stroke HQ To Local Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/stroke-hq-r204.js'
+      - 'chrome-extension/tool.html'
+      - '.github/workflows/sync-stroke-hq-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Sync HQ stroke engine and loader
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p chrome-extension/assets
+          cp assets/stroke-hq-r204.js chrome-extension/assets/stroke-hq-r204.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('chrome-extension/tool.html')
+          s=p.read_text(encoding='utf-8')
+          tag='<script src="assets/stroke-hq-r204.js"></script>'
+          if tag not in s:
+              needle='<script src="extension-update.js"></script>'
+              s=s.replace(needle,tag+'\n'+needle) if needle in s else s.replace('</body>',tag+'\n</body>')
+              p.write_text(s,encoding='utf-8')
+          mp=Path('chrome-extension/manifest.json')
+          if mp.exists():
+              m=json.loads(mp.read_text(encoding='utf-8'))
+              m['version']='2.0.3'
+              m['version_name']='2.0.3 • R20.4-STROKE-HQ'
+              mp.write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          vp=Path('chrome-extension/local-version.json')
+          if vp.exists():
+              v=json.loads(vp.read_text(encoding='utf-8'))
+              v['tool_version']='R20.4-STROKE-HQ'
+              v['source_sha']='stroke-hq-r204'
+              v['updated_at']='2026-09-15T12:35:00+07:00'
+              vp.write_text(json.dumps(v,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+      - name: Validate JavaScript
+        run: |
+          node --check assets/stroke-hq-r204.js
+          node --check chrome-extension/assets/stroke-hq-r204.js
+          python3 -m json.tool chrome-extension/manifest.json >/dev/null
+      - name: Commit generated extension files
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add chrome-extension/assets/stroke-hq-r204.js chrome-extension/tool.html chrome-extension/manifest.json chrome-extension/local-version.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Sync R20.4 HQ stroke engine to Chrome extension'
+          git push
