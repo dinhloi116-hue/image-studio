@@ -7,6 +7,8 @@ on:
       - 'direct/index.html'
       - 'direct/version.txt'
       - 'assets/video-compressor-r199.js'
+      - 'assets/nameset-paste-r205.js'
+      - 'assets/nameset-layer-toggle-r206.js'
       - 'assets/ffmpeg-worker-r199.js'
       - 'assets/ffmpeg-core.js'
       - 'assets/ffmpeg-core.wasm'
@@ -69,12 +71,12 @@ jobs:
               return f'<script{module} src="tool-scripts/{name}"></script>'
 
           html=script_re.sub(repl,html)
-          html=html.replace('</body>','<script src="extension-update.js"></script>\n</body>')
+          html=html.replace('</body>','<script src="assets/nameset-paste-r205.js"></script>\\n<script src="assets/nameset-layer-toggle-r206.js"></script>\\n<script src="extension-update.js"></script>\\n</body>')
           html=html.replace('<title>Image Studio R19</title>','<title>Image Studio DHL - Local</title>')
           (ext/'tool.html').write_text(html,encoding='utf-8')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
-          for name in ['video-compressor-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm']:
+          for name in ['video-compressor-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','nameset-paste-r205.js','nameset-layer-toggle-r206.js']:
               shutil.copy2(root/'assets'/name, assets/name)
 
           vp=assets/'video-compressor-r199.js'
@@ -92,10 +94,10 @@ jobs:
           manifest={
             'manifest_version':3,
             'name':'Image Studio DHL - Local',
-            'version':'2.0.0',
-            'version_name':f'2.0.0 • {version}',
+            'version':'2.0.5',
+            'version_name':f'2.0.5 • {version}',
             'description':'Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.',
-            'permissions':['storage','downloads','tabs'],
+            'permissions':['storage','downloads','tabs','clipboardRead'],
             'host_permissions':['https://raw.githubusercontent.com/*'],
             'background':{'service_worker':'background.js'},
             'action':{'default_title':'Mở Image Studio DHL'}
