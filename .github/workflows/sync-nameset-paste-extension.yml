@@ -1,0 +1,65 @@
+name: Keep Corel Paste In Local Extension
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'assets/nameset-paste-r205.js'
+      - 'chrome-extension/tool.html'
+      - 'chrome-extension/manifest.json'
+      - '.github/workflows/sync-nameset-paste-extension.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Sync Corel paste feature
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p chrome-extension/assets
+          cp assets/nameset-paste-r205.js chrome-extension/assets/nameset-paste-r205.js
+          python3 - <<'PY'
+          from pathlib import Path
+          import json
+          p=Path('chrome-extension/tool.html')
+          html=p.read_text(encoding='utf-8')
+          tag='<script src="assets/nameset-paste-r205.js"></script>'
+          if tag not in html:
+              anchor='<script src="extension-update.js"></script>'
+              if anchor not in html:
+                  raise SystemExit('extension-update.js anchor not found')
+              html=html.replace(anchor,tag+'\n'+anchor)
+              p.write_text(html,encoding='utf-8')
+
+          mp=Path('chrome-extension/manifest.json')
+          m=json.loads(mp.read_text(encoding='utf-8'))
+          perms=list(m.get('permissions') or [])
+          if 'clipboardRead' not in perms:
+              perms.append('clipboardRead')
+          m['permissions']=perms
+          m['version']='2.0.4'
+          m['version_name']='2.0.4 • R20.5-COREL-PASTE'
+          mp.write_text(json.dumps(m,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+      - name: Validate
+        run: |
+          node --check chrome-extension/assets/nameset-paste-r205.js
+          python3 -m json.tool chrome-extension/manifest.json >/dev/null
+          grep -q 'assets/nameset-paste-r205.js' chrome-extension/tool.html
+      - name: Commit if changed
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add chrome-extension/assets/nameset-paste-r205.js chrome-extension/tool.html chrome-extension/manifest.json
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Keep R20.5 Corel paste in local extension'
+          git push
