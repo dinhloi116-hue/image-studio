@@ -40,24 +40,20 @@
     n.textContent=msg;n.className='p-paste-status'+(kind?' '+kind:'');
   }
   function useImageFile(file,source='clipboard'){
-    const input=$('p_bgFile');
-    if(!input||!file)return false;
+    if(!file)return false;
     const type=file.type||'image/png';
     const ext=type.includes('jpeg')?'jpg':type.includes('webp')?'webp':'png';
     const named=(file.name&&file.name!=='image.png')?file:new File([file],`corel-paste-${stamp()}.${ext}`,{type,lastModified:Date.now()});
     try{
-      const dt=new DataTransfer();
-      dt.items.add(named);
-      input.files=dt.files;
-      input.dispatchEvent(new Event('change',{bubbles:true}));
+      window.dispatchEvent(new CustomEvent('nameset:overlayFile',{detail:{file:named,fileName:named.name,source}}));
       window.dispatchEvent(new CustomEvent('nameset:corelPaste',{detail:{fileName:named.name,source}}));
-      setMsg(`✓ Đã nhận ảnh từ ${source}: ${named.name}`,'ok');
+      setMsg(`✓ Đã thêm ảnh lên trên nền: ${named.name}`,'ok');
       const zone=$('p_clipPasteZone');
       if(zone){zone.classList.remove('is-over');zone.focus({preventScroll:true});}
       return true;
     }catch(err){
-      console.error('Corel clipboard paste:',err);
-      setMsg('Không đưa được ảnh clipboard vào preview. Hãy thử Ctrl+V lại.','err');
+      console.error('Corel overlay paste:',err);
+      setMsg('Không thêm được ảnh clipboard lên preview. Hãy thử Ctrl+V lại.','err');
       return false;
     }
   }
@@ -99,12 +95,15 @@
     zone.setAttribute('aria-label','Dán ảnh từ Corel bằng Ctrl V');
     zone.innerHTML=`
       <div class="p-paste-head">
-        <div class="p-paste-title">Dán nhanh ảnh từ Corel</div>
+        <div class="p-paste-title">Dán thêm ảnh từ Corel</div>
         <div class="p-paste-key">Ctrl + V</div>
       </div>
-      <div class="p-paste-desc">Copy đối tượng/ảnh trong Corel → quay lại đây → click ô này và nhấn <b>Ctrl+V</b>. Ảnh sẽ tự thay ảnh nền preview, không cần lưu file rồi chọn lại.</div>
+      <div class="p-paste-desc">Copy tên/số/logo trong Corel → quay lại đây → click ô này và nhấn <b>Ctrl+V</b>. Ảnh sẽ được <b>thêm thành một lớp mới trên ảnh nền</b>, không thay ảnh áo. Sau đó kéo trực tiếp trên preview để di chuyển, kéo ô xanh góc phải dưới để co giãn.</div>
       <div class="p-paste-actions">
-        <button type="button" id="p_clipPasteBtn" class="p-paste-btn">Dán từ clipboard</button>
+        <button type="button" id="p_clipPasteBtn" class="p-paste-btn">Dán thêm ảnh</button>
+        <button type="button" id="p_clipToggleBtn" class="p-paste-btn">Ẩn/hiện ảnh dán</button>
+        <button type="button" id="p_clipResetBtn" class="p-paste-btn">Đặt lại vị trí</button>
+        <button type="button" id="p_clipClearBtn" class="p-paste-btn">Xóa ảnh dán</button>
         <span id="p_clipPasteStatus" class="p-paste-status">Sẵn sàng nhận ảnh PNG/JPG/WebP từ clipboard.</span>
       </div>`;
     field.after(zone);
@@ -118,6 +117,9 @@
       if(f)useImageFile(f,'kéo thả');else setMsg('File vừa thả không phải ảnh hỗ trợ.','err');
     });
     $('p_clipPasteBtn')?.addEventListener('click',readClipboardButton);
+    $('p_clipToggleBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'toggle'}})));
+    $('p_clipResetBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'reset'}})));
+    $('p_clipClearBtn')?.addEventListener('click',()=>{window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'clear'}}));setMsg('Đã xóa ảnh dán thêm.');});
     document.addEventListener('paste',e=>{
       if(!previewActive()||zone.contains(e.target))return;
       const f=imageFromClipboardData(e.clipboardData);
@@ -131,5 +133,5 @@
     mo.observe(document.documentElement,{childList:true,subtree:true});
     setTimeout(install,600);
   }
-  window.namesetPaste={install,useImageFile,version:'R20.5'};
+  window.namesetPaste={install,useImageFile,version:'R20.7'};
 })();
