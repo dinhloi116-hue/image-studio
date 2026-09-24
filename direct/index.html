@@ -2927,9 +2927,10 @@ if(typeof window!=='undefined'){
     };
     const state={
       bgImage:null,bgUrl:'',zoom:1,
+      overlayImage:null,overlayUrl:'',overlay:{x:0,y:0,w:0,h:0,visible:true,selected:false},
       nameFontFamily:'Arial, sans-serif',
       numberFontFamily:'Arial Black, Arial, sans-serif',
-      drag:{active:false,mode:'move',offsetX:0,offsetY:0,startY:0,startW:0,startH:0,startNameCm:4,startNumCm:22,startGapCm:2}
+      drag:{active:false,mode:'move',offsetX:0,offsetY:0,startX:0,startY:0,startW:0,startH:0,startNameCm:4,startNumCm:22,startGapCm:2,startOverlayX:0,startOverlayY:0,startOverlayW:0,startOverlayH:0}
     };
     function setStatus(msg){ if(els.status) els.status.textContent=msg; }
     function safeName(name){
@@ -2970,17 +2971,49 @@ if(typeof window!=='undefined'){
       for(const [x,y] of pts){ctx.beginPath();ctx.rect(x-hs/2,y-hs/2,hs,hs);ctx.fill();ctx.stroke();}
       ctx.restore();
     }
+    function overlayRect(){const o=state.overlay;return{left:o.x,top:o.y,right:o.x+o.w,bottom:o.y+o.h,width:o.w,height:o.h}}
+    function drawOverlayHandles(){
+      if(!state.overlayImage||!state.overlay.visible)return;
+      const r=overlayRect(),hs=Math.max(16,Math.min(28,canvas.width/55));
+      ctx.save();ctx.setLineDash([9,6]);ctx.strokeStyle='rgba(34,197,94,.95)';ctx.lineWidth=2;
+      ctx.strokeRect(r.left-4,r.top-4,r.width+8,r.height+8);ctx.setLineDash([]);
+      ctx.fillStyle='#16a34a';ctx.strokeStyle='#dcfce7';ctx.lineWidth=2;
+      ctx.beginPath();ctx.rect(r.right-hs/2,r.bottom-hs/2,hs,hs);ctx.fill();ctx.stroke();ctx.restore();
+    }
     function renderPreview(guides=true){
       ctx.clearRect(0,0,canvas.width,canvas.height);
       if(state.bgImage){ctx.drawImage(state.bgImage,0,0,canvas.width,canvas.height)}
       else{ctx.fillStyle='#0b1220';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='rgba(255,255,255,.25)';ctx.font='bold 28px Arial';ctx.textAlign='center';ctx.fillText('Hãy tải ảnh preview áo để bắt đầu',canvas.width/2,canvas.height/2);if(guides)drawRuler();return}
+      if(state.overlayImage&&state.overlay.visible){
+        const o=state.overlay;ctx.drawImage(state.overlayImage,o.x,o.y,o.w,o.h);
+      }
       const L=getLayout();
-      drawSpacedText(L.name,L.centerX,L.nameBaseline,state.nameFontFamily,L.nameFontPx,L.nameTrackingPx,els.nameColor.value,L.strokePx,els.strokeColor.value,'center','700');
-      drawSpacedText(L.number,L.centerX,L.numberBaseline,state.numberFontFamily,L.numberFontPx,L.numberTrackingPx,els.numberColor.value,L.strokePx,els.strokeColor.value,'center','900');
-      if(guides){drawRuler();drawHandles(L);}
+      if(L.name)drawSpacedText(L.name,L.centerX,L.nameBaseline,state.nameFontFamily,L.nameFontPx,L.nameTrackingPx,els.nameColor.value,L.strokePx,els.strokeColor.value,'center','700');
+      if(L.number)drawSpacedText(L.number,L.centerX,L.numberBaseline,state.numberFontFamily,L.numberFontPx,L.numberTrackingPx,els.numberColor.value,L.strokePx,els.strokeColor.value,'center','900');
+      if(guides){drawRuler();if(L.name||L.number)drawHandles(L);if(state.overlayImage&&state.overlay.visible)drawOverlayHandles();}
     }
     async function loadFontFile(file,target){if(!file)return;const family='LocalFont_'+Date.now()+'_'+Math.floor(Math.random()*99999);const url=URL.createObjectURL(file);try{const font=new FontFace(family,`url(${url})`);await font.load();document.fonts.add(font);if(target==='name'){state.nameFontFamily=`'${family}', Arial, sans-serif`;els.nameFontLabel.textContent='Đang dùng: '+file.name}else{state.numberFontFamily=`'${family}', Arial Black, Arial, sans-serif`;els.numberFontLabel.textContent='Đang dùng: '+file.name}setStatus('Đã nạp font: '+file.name);renderPreview()}catch(err){console.error(err);alert('Không đọc được font này. Hãy thử file TTF / OTF / WOFF khác.')}finally{safeRevoke(url)}}
     function loadBackground(file){if(!file)return;const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{safeRevoke(state.bgUrl);state.bgImage=img;state.bgUrl=url;canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;fitCanvas();autoCenterDefaults();setStatus(`Đã tải ảnh nền: ${file.name} (${img.naturalWidth} × ${img.naturalHeight}px)`);renderPreview()};img.onerror=()=>{safeRevoke(url);setStatus('Không đọc được ảnh nền preview.');};img.src=url}
+    function resetOverlayPosition(){
+      if(!state.overlayImage)return;
+      const img=state.overlayImage;
+      const scale=Math.min(1,(canvas.width*.62)/Math.max(1,img.naturalWidth),(canvas.height*.58)/Math.max(1,img.naturalHeight));
+      state.overlay.w=Math.max(20,img.naturalWidth*scale);state.overlay.h=Math.max(20,img.naturalHeight*scale);
+      state.overlay.x=(canvas.width-state.overlay.w)/2;state.overlay.y=Math.max(0,canvas.height*.10);
+      state.overlay.visible=true;state.overlay.selected=true;renderPreview();
+    }
+    function loadOverlay(file){
+      if(!file)return;
+      const url=URL.createObjectURL(file),img=new Image();
+      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;resetOverlayPosition();setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo để di chuyển, kéo ô xanh góc phải dưới để co giãn.`);renderPreview();};
+      img.onerror=()=>{safeRevoke(url);setStatus('Không đọc được ảnh dán thêm.');};
+      img.src=url;
+    }
+    function clearOverlay(){safeRevoke(state.overlayUrl);state.overlayImage=null;state.overlayUrl='';state.overlay.selected=false;renderPreview();setStatus('Đã xóa ảnh dán thêm.')}
+    function toggleOverlay(force){if(!state.overlayImage)return;state.overlay.visible=typeof force==='boolean'?force:!state.overlay.visible;renderPreview();setStatus(state.overlay.visible?'Đã hiện ảnh dán thêm.':'Đã ẩn ảnh dán thêm.')}
+    window.namesetPreviewOverlay={loadOverlay,clearOverlay,toggleOverlay,resetOverlayPosition,get state(){return state.overlay}};
+    window.addEventListener('nameset:overlayFile',e=>{const f=e.detail&&e.detail.file;if(f)loadOverlay(f)});
+    window.addEventListener('nameset:overlayCommand',e=>{const cmd=e.detail&&e.detail.command;if(cmd==='clear')clearOverlay();else if(cmd==='toggle')toggleOverlay();else if(cmd==='reset')resetOverlayPosition()});
     function autoCenterDefaults(){if(els.centerXCm)els.centerXCm.value=(pxToCm(canvas.width/2)).toFixed(1);if(els.topYCm)els.topYCm.value=Math.max(0,pxToCm(canvas.height*.12)).toFixed(1)}
     function fitCanvas(){canvas.style.width=`${Math.round(canvas.width*state.zoom)}px`;canvas.style.height=`${Math.round(canvas.height*state.zoom)}px`}
     function makeCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
@@ -3033,6 +3066,8 @@ if(typeof window!=='undefined'){
       return false;
     }
     function pointInBlock(p,L){return p.x>=L.blockLeft-14&&p.x<=L.blockRight+14&&p.y>=L.blockTop-14&&p.y<=L.blockBottom+14}
+    function pointInOverlay(p){if(!state.overlayImage||!state.overlay.visible)return false;const r=overlayRect();return p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom}
+    function hitOverlayResize(p){if(!state.overlayImage||!state.overlay.visible)return false;const r=overlayRect(),hs=Math.max(20,Math.min(34,canvas.width/45));return Math.abs(p.x-r.right)<=hs&&Math.abs(p.y-r.bottom)<=hs}
     ['p_nameText','p_numberText','p_uppercaseName','p_nameHeightCm','p_numberHeightCm','p_gapCm','p_pxPerCm','p_nameTrackingCm','p_numberTrackingCm','p_strokePx','p_centerXCm','p_topYCm','p_nameColor','p_numberColor','p_strokeColor','p_showRuler'].forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',()=>renderPreview());el.addEventListener('change',()=>renderPreview())});
     if(els.bgFile)els.bgFile.addEventListener('change',e=>loadBackground(e.target.files[0]));
     if(els.nameFontFile)els.nameFontFile.addEventListener('change',e=>loadFontFile(e.target.files[0],'name'));
@@ -3047,18 +3082,35 @@ if(typeof window!=='undefined'){
     canvas.addEventListener('mousedown',e=>{
       if(!state.bgImage)return;
       const p=canvasMousePos(e), L=getLayout();
-      if(hitResizeHandle(p,L)){
+      if(hitOverlayResize(p)){
+        const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-resize';state.drag.startX=p.x;state.drag.startY=p.y;state.drag.startOverlayX=o.x;state.drag.startOverlayY=o.y;state.drag.startOverlayW=o.w;state.drag.startOverlayH=o.h;
+        canvas.classList.add('dragging');setStatus('Đang co giãn ảnh dán thêm...');
+      }else if(pointInOverlay(p)){
+        const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-move';state.drag.offsetX=p.x-o.x;state.drag.offsetY=p.y-o.y;
+        canvas.classList.add('dragging');setStatus('Đang di chuyển ảnh dán thêm...');
+      }else if((L.name||L.number)&&hitResizeHandle(p,L)){
         state.drag.active=true;state.drag.mode='resize';state.drag.startY=p.y;state.drag.startW=L.blockWidth;state.drag.startH=L.blockHeight;
         state.drag.startNameCm=num(els.nameHeightCm,4);state.drag.startNumCm=num(els.numberHeightCm,22);state.drag.startGapCm=num(els.gapCm,2);
         canvas.classList.add('dragging');setStatus('Đang đổi kích thước: kéo ra xa để phóng to, kéo vào gần để thu nhỏ...');
-      }else if(pointInBlock(p,L)){
+      }else if((L.name||L.number)&&pointInBlock(p,L)){
         state.drag.active=true;state.drag.mode='move';state.drag.offsetX=p.x-L.centerX;state.drag.offsetY=p.y-L.topY;canvas.classList.add('dragging');setStatus('Đang di chuyển tên/số bằng chuột...');
       }
     });
     window.addEventListener('mousemove',e=>{
       if(!state.drag.active)return;
       const p=canvasMousePos(e);
-      if(state.drag.mode==='move'){
+      if(state.drag.mode==='overlay-move'){
+        const o=state.overlay;o.x=clamp(p.x-state.drag.offsetX,-o.w*.85,canvas.width-o.w*.15);o.y=clamp(p.y-state.drag.offsetY,-o.h*.85,canvas.height-o.h*.15);
+      }else if(state.drag.mode==='overlay-resize'){
+        const aspect=Math.max(.001,state.drag.startOverlayW/Math.max(1,state.drag.startOverlayH));
+        let nw=Math.max(24,state.drag.startOverlayW+(p.x-state.drag.startX));
+        let nh=nw/aspect;
+        if(nh<24){nh=24;nw=nh*aspect}
+        const maxW=Math.max(24,canvas.width-state.drag.startOverlayX+canvas.width*.5),maxH=Math.max(24,canvas.height-state.drag.startOverlayY+canvas.height*.5);
+        if(nw>maxW){nw=maxW;nh=nw/aspect}
+        if(nh>maxH){nh=maxH;nw=nh*aspect}
+        state.overlay.w=nw;state.overlay.h=nh;
+      }else if(state.drag.mode==='move'){
         const newCenter=p.x-state.drag.offsetX,newTop=p.y-state.drag.offsetY;
         if(els.centerXCm)els.centerXCm.value=pxToCm(newCenter).toFixed(2);
         if(els.topYCm)els.topYCm.value=pxToCm(newTop).toFixed(2);
@@ -3076,7 +3128,7 @@ if(typeof window!=='undefined'){
       }
       renderPreview();
     });
-    window.addEventListener('mouseup',()=>{if(state.drag.active)setStatus('Đã cập nhật vị trí/kích thước tên số.');state.drag.active=false;canvas.classList.remove('dragging')});
+    window.addEventListener('mouseup',()=>{if(state.drag.active)setStatus(state.drag.mode.startsWith('overlay-')?'Đã cập nhật vị trí/kích thước ảnh dán thêm.':'Đã cập nhật vị trí/kích thước tên số.');state.drag.active=false;canvas.classList.remove('dragging')});
     
     function isPreviewMode(){ try{return localStorage.getItem('pip_mainMode')==='preview'}catch(e){return document.body.dataset.mode==='preview'} }
     function interceptTopForPreview(id, handler){
