@@ -14,6 +14,7 @@
     .p-paste-actions{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:9px}
     .p-paste-btn{appearance:none;border:1px solid #3d4d63;border-radius:8px;background:#182234;color:#eef3ff;padding:7px 10px;font-size:11.5px;font-weight:750;cursor:pointer}
     .p-paste-btn:hover{border-color:#6f88b7;background:#202d43}
+    .p-paste-btn:disabled{opacity:.42;cursor:not-allowed;background:#111827;border-color:#29374b}
     .p-paste-status{font-size:11px;color:#8fa3bf;min-height:16px}
     .p-paste-status.ok{color:#86efac}.p-paste-status.err{color:#fca5a5}
     .p-bg-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid #26364d}
@@ -105,10 +106,11 @@
         <div class="p-paste-title">Dán thêm ảnh từ Corel</div>
         <div class="p-paste-key">Ctrl + V</div>
       </div>
-      <div class="p-paste-desc">Copy tên/số/logo trong Corel → quay lại đây → click ô này và nhấn <b>Ctrl+V</b>. Ảnh sẽ được <b>thêm thành một lớp mới trên ảnh nền</b>, không thay ảnh áo. Sau đó kéo trực tiếp trên preview để di chuyển, kéo ô xanh góc phải dưới để co giãn.</div>
+      <div class="p-paste-desc">Copy tên/số/logo trong Corel → quay lại đây → click ô này và nhấn <b>Ctrl+V</b>. Ảnh được thêm thành lớp riêng. <b>Kéo giữa</b> để di chuyển, <b>8 ô xanh</b> để co giãn, <b>4 nút tròn ở góc</b> để xoay. Nếu kéo sai, bấm <b>Hoàn tác</b>.</div>
       <div class="p-paste-actions">
         <button type="button" id="p_clipPasteBtn" class="p-paste-btn">Dán thêm ảnh</button>
         <button type="button" id="p_clipToggleBtn" class="p-paste-btn">Ẩn/hiện ảnh dán</button>
+        <button type="button" id="p_clipUndoBtn" class="p-paste-btn" disabled>↶ Hoàn tác</button>
         <button type="button" id="p_clipResetBtn" class="p-paste-btn">Đặt lại vị trí</button>
         <button type="button" id="p_clipClearBtn" class="p-paste-btn">Xóa ảnh dán</button>
         <span id="p_clipPasteStatus" class="p-paste-status">Sẵn sàng nhận ảnh PNG/JPG/WebP từ clipboard.</span>
@@ -138,8 +140,10 @@
     });
     $('p_clipPasteBtn')?.addEventListener('click',readClipboardButton);
     $('p_clipToggleBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'toggle'}})));
+    $('p_clipUndoBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'undo'}})));
     $('p_clipResetBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'reset'}})));
     $('p_clipClearBtn')?.addEventListener('click',()=>{window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'clear'}}));setMsg('Đã xóa ảnh dán thêm.');});
+    window.addEventListener('nameset:overlayUndoState',e=>{const b=$('p_clipUndoBtn');if(!b)return;const n=Number(e.detail?.count)||0;b.disabled=!e.detail?.available;b.textContent=n?('↶ Hoàn tác ('+n+')'):'↶ Hoàn tác';});
     const bgBtns=['p_bgNoneBtn','p_bgWhiteBtn','p_bgBlackBtn','p_bgPickBtn'];
     const activeBg=id=>bgBtns.forEach(x=>$(x)?.classList.toggle('is-active',x===id));
     $('p_bgNoneBtn')?.addEventListener('click',()=>{activeBg('p_bgNoneBtn');window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-none'}}));setMsg('Không xóa nền ảnh dán.');});
@@ -163,5 +167,5 @@
     mo.observe(document.documentElement,{childList:true,subtree:true});
     setTimeout(install,600);
   }
-  window.namesetPaste={install,useImageFile,version:'R20.8'};
+  window.namesetPaste={install,useImageFile,version:'R20.9'};
 })();
