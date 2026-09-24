@@ -7,6 +7,7 @@ on:
       - 'direct/index.html'
       - 'direct/version.txt'
       - 'assets/video-compressor-r199.js'
+      - 'assets/video-compressor-core-r199.js'
       - 'assets/nameset-paste-r205.js'
       - 'assets/nameset-layer-toggle-r206.js'
       - 'assets/halftone-help-r203.js'
@@ -80,15 +81,14 @@ jobs:
           (ext/'tool.html').write_text(html,encoding='utf-8')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
-          for name in ['video-compressor-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js']:
+          for name in ['video-compressor-r199.js','video-compressor-core-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js']:
               shutil.copy2(root/'assets'/name, assets/name)
 
           vp=assets/'video-compressor-r199.js'
           v=vp.read_text(encoding='utf-8')
-          v,n=re.subn(r"function assetBase\(\)\{return .*?\}","function assetBase(){return new URL('assets/', location.href).href}",v,count=1)
-          if n!=1:
-              raise SystemExit('Could not patch assetBase() in video compressor')
-          vp.write_text(v,encoding='utf-8')
+          if 'function assetBase()' in v:
+              v=re.sub(r"function assetBase\(\)\{return .*?\}","function assetBase(){return new URL('assets/', location.href).href}",v,count=1)
+              vp.write_text(v,encoding='utf-8')
 
           version=(root/'direct/version.txt').read_text(encoding='utf-8').strip()
           sha=os.environ.get('GITHUB_SHA','')
@@ -104,7 +104,8 @@ jobs:
             'permissions':['storage','downloads','tabs','clipboardRead'],
             'host_permissions':['https://raw.githubusercontent.com/*'],
             'background':{'service_worker':'background.js'},
-            'action':{'default_title':'Mở Image Studio DHL'}
+            'icons':{'16':'icons/icon128.png','32':'icons/icon128.png','48':'icons/icon128.png','128':'icons/icon128.png'},
+            'action':{'default_title':'Mở Image Studio DHL','default_icon':{'16':'icons/icon128.png','32':'icons/icon128.png','48':'icons/icon128.png','128':'icons/icon128.png'}}
           }
           (ext/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
