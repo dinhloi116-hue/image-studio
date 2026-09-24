@@ -61,7 +61,7 @@
     };
     const state={
       bgImage:null,bgUrl:'',zoom:1,
-      overlayImage:null,overlayUrl:'',overlay:{x:0,y:0,w:0,h:0,visible:true,selected:false},
+      overlayImage:null,overlayUrl:'',overlaySourceCanvas:null,overlayProcessed:null,overlay:{x:0,y:0,w:0,h:0,visible:true,selected:false},overlayBg:{color:null,label:'',tolerance:36,picking:false},
       nameFontFamily:'Arial, sans-serif',
       numberFontFamily:'Arial Black, Arial, sans-serif',
       drag:{active:false,mode:'move',offsetX:0,offsetY:0,startX:0,startY:0,startW:0,startH:0,startNameCm:4,startNumCm:22,startGapCm:2,startOverlayX:0,startOverlayY:0,startOverlayW:0,startOverlayH:0}
@@ -119,7 +119,7 @@
       if(state.bgImage){ctx.drawImage(state.bgImage,0,0,canvas.width,canvas.height)}
       else{ctx.fillStyle='#0b1220';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='rgba(255,255,255,.25)';ctx.font='bold 28px Arial';ctx.textAlign='center';ctx.fillText('Hãy tải ảnh preview áo để bắt đầu',canvas.width/2,canvas.height/2);if(guides)drawRuler();return}
       if(state.overlayImage&&state.overlay.visible){
-        const o=state.overlay;ctx.drawImage(state.overlayImage,o.x,o.y,o.w,o.h);
+        const o=state.overlay;ctx.drawImage(state.overlayProcessed||state.overlayImage,o.x,o.y,o.w,o.h);
       }
       const L=getLayout();
       if(L.name)drawSpacedText(L.name,L.centerX,L.nameBaseline,state.nameFontFamily,L.nameFontPx,L.nameTrackingPx,els.nameColor.value,L.strokePx,els.strokeColor.value,'center','700');
@@ -128,6 +128,58 @@
     }
     async function loadFontFile(file,target){if(!file)return;const family='LocalFont_'+Date.now()+'_'+Math.floor(Math.random()*99999);const url=URL.createObjectURL(file);try{const font=new FontFace(family,`url(${url})`);await font.load();document.fonts.add(font);if(target==='name'){state.nameFontFamily=`'${family}', Arial, sans-serif`;els.nameFontLabel.textContent='Đang dùng: '+file.name}else{state.numberFontFamily=`'${family}', Arial Black, Arial, sans-serif`;els.numberFontLabel.textContent='Đang dùng: '+file.name}setStatus('Đã nạp font: '+file.name);renderPreview()}catch(err){console.error(err);alert('Không đọc được font này. Hãy thử file TTF / OTF / WOFF khác.')}finally{safeRevoke(url)}}
     function loadBackground(file){if(!file)return;const url=URL.createObjectURL(file);const img=new Image();img.onload=()=>{safeRevoke(state.bgUrl);state.bgImage=img;state.bgUrl=url;canvas.width=img.naturalWidth;canvas.height=img.naturalHeight;fitCanvas();autoCenterDefaults();setStatus(`Đã tải ảnh nền: ${file.name} (${img.naturalWidth} × ${img.naturalHeight}px)`);renderPreview()};img.onerror=()=>{safeRevoke(url);setStatus('Không đọc được ảnh nền preview.');};img.src=url}
+    function rgbHex(rgb){return '#'+rgb.map(v=>clamp(Math.round(v),0,255).toString(16).padStart(2,'0')).join('').toUpperCase()}
+    function ensureOverlaySourceCanvas(){
+      if(!state.overlayImage)return null;
+      if(state.overlaySourceCanvas&&state.overlaySourceCanvas.width===state.overlayImage.naturalWidth&&state.overlaySourceCanvas.height===state.overlayImage.naturalHeight)return state.overlaySourceCanvas;
+      const c=makeCanvas(Math.max(1,state.overlayImage.naturalWidth),Math.max(1,state.overlayImage.naturalHeight));
+      c.getContext('2d',{willReadFrequently:true}).drawImage(state.overlayImage,0,0);
+      state.overlaySourceCanvas=c;
+      return c;
+    }
+    function rebuildOverlayProcessed(){
+      if(!state.overlayImage)return;
+      if(!state.overlayBg.color){state.overlayProcessed=null;renderPreview();return;}
+      const src=ensureOverlaySourceCanvas();if(!src)return;
+      const c=makeCanvas(src.width,src.height),cctx=c.getContext('2d',{willReadFrequently:true});
+      cctx.drawImage(src,0,0);
+      const im=cctx.getImageData(0,0,c.width,c.height),d=im.data,[tr,tg,tb]=state.overlayBg.color;
+      const tol=clamp(Number(state.overlayBg.tolerance)||0,0,180),feather=Math.max(6,Math.min(28,tol*.35+5));
+      for(let i=0;i<d.length;i+=4){
+        const dr=d[i]-tr,dg=d[i+1]-tg,db=d[i+2]-tb,dist=Math.sqrt(dr*dr+dg*dg+db*db);
+        if(dist<=tol)d[i+3]=0;
+        else if(dist<tol+feather)d[i+3]=Math.round(d[i+3]*((dist-tol)/feather));
+      }
+      cctx.putImageData(im,0,0);state.overlayProcessed=c;renderPreview();
+    }
+    function setOverlayBgColor(color,label=''){
+      state.overlayBg.color=color?color.slice(0,3).map(v=>clamp(Number(v)||0,0,255)):null;
+      state.overlayBg.label=label||'';state.overlayBg.picking=false;
+      rebuildOverlayProcessed();
+      setStatus(state.overlayBg.color?`Đã xóa nền gần màu ${state.overlayBg.label||rgbHex(state.overlayBg.color)} • dung sai ${state.overlayBg.tolerance}.`:'Đã tắt xóa nền cho ảnh dán.');
+    }
+    function setOverlayBgTolerance(value){
+      state.overlayBg.tolerance=clamp(Number(value)||0,0,180);
+      if(state.overlayBg.color)rebuildOverlayProcessed();
+      setStatus(`Dung sai xóa nền: ${state.overlayBg.tolerance}.`);
+    }
+    function beginOverlayBgPick(){
+      if(!state.overlayImage){setStatus('Hãy dán ảnh trước rồi mới chích màu nền.');return}
+      state.overlayBg.picking=true;
+      setStatus('Ống hút đang bật: click trực tiếp vào màu nền trên ảnh dán.');
+      renderPreview();
+    }
+    function sampleOverlayBgColor(p){
+      if(!state.overlayImage||!pointInOverlay(p))return false;
+      const src=ensureOverlaySourceCanvas();if(!src)return false;
+      const o=state.overlay,rx=clamp((p.x-o.x)/Math.max(1,o.w),0,0.999999),ry=clamp((p.y-o.y)/Math.max(1,o.h),0,0.999999);
+      const sx=clamp(Math.floor(rx*src.width),0,src.width-1),sy=clamp(Math.floor(ry*src.height),0,src.height-1);
+      const px=src.getContext('2d',{willReadFrequently:true}).getImageData(sx,sy,1,1).data,rgb=[px[0],px[1],px[2]],hex=rgbHex(rgb);
+      setOverlayBgColor(rgb,hex);
+      window.dispatchEvent(new CustomEvent('nameset:overlayPickedColor',{detail:{rgb,color:hex}}));
+      setStatus(`Đã chích màu nền ${hex}. Có thể tăng/giảm dung sai nếu mép còn viền.`);
+      return true;
+    }
     function resetOverlayPosition(){
       if(!state.overlayImage)return;
       const img=state.overlayImage;
@@ -139,15 +191,15 @@
     function loadOverlay(file){
       if(!file)return;
       const url=URL.createObjectURL(file),img=new Image();
-      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;resetOverlayPosition();setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo để di chuyển, kéo ô xanh góc phải dưới để co giãn.`);renderPreview();};
+      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;ensureOverlaySourceCanvas();resetOverlayPosition();window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo để di chuyển, kéo ô xanh góc phải dưới để co giãn.`);renderPreview();};
       img.onerror=()=>{safeRevoke(url);setStatus('Không đọc được ảnh dán thêm.');};
       img.src=url;
     }
-    function clearOverlay(){safeRevoke(state.overlayUrl);state.overlayImage=null;state.overlayUrl='';state.overlay.selected=false;renderPreview();setStatus('Đã xóa ảnh dán thêm.')}
+    function clearOverlay(){safeRevoke(state.overlayUrl);state.overlayImage=null;state.overlayUrl='';state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;state.overlay.selected=false;window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));renderPreview();setStatus('Đã xóa ảnh dán thêm.')}
     function toggleOverlay(force){if(!state.overlayImage)return;state.overlay.visible=typeof force==='boolean'?force:!state.overlay.visible;renderPreview();setStatus(state.overlay.visible?'Đã hiện ảnh dán thêm.':'Đã ẩn ảnh dán thêm.')}
-    window.namesetPreviewOverlay={loadOverlay,clearOverlay,toggleOverlay,resetOverlayPosition,get state(){return state.overlay}};
+    window.namesetPreviewOverlay={loadOverlay,clearOverlay,toggleOverlay,resetOverlayPosition,setOverlayBgColor,setOverlayBgTolerance,beginOverlayBgPick,get state(){return state.overlay},get bg(){return state.overlayBg}};
     window.addEventListener('nameset:overlayFile',e=>{const f=e.detail&&e.detail.file;if(f)loadOverlay(f)});
-    window.addEventListener('nameset:overlayCommand',e=>{const cmd=e.detail&&e.detail.command;if(cmd==='clear')clearOverlay();else if(cmd==='toggle')toggleOverlay();else if(cmd==='reset')resetOverlayPosition()});
+    window.addEventListener('nameset:overlayCommand',e=>{const d=e.detail||{},cmd=d.command;if(cmd==='clear')clearOverlay();else if(cmd==='toggle')toggleOverlay();else if(cmd==='reset')resetOverlayPosition();else if(cmd==='bg-none')setOverlayBgColor(null,'');else if(cmd==='bg-white')setOverlayBgColor([255,255,255],'trắng');else if(cmd==='bg-black')setOverlayBgColor([0,0,0],'đen');else if(cmd==='bg-pick')beginOverlayBgPick();else if(cmd==='bg-tolerance')setOverlayBgTolerance(d.value)});
     function autoCenterDefaults(){if(els.centerXCm)els.centerXCm.value=(pxToCm(canvas.width/2)).toFixed(1);if(els.topYCm)els.topYCm.value=Math.max(0,pxToCm(canvas.height*.12)).toFixed(1)}
     function fitCanvas(){canvas.style.width=`${Math.round(canvas.width*state.zoom)}px`;canvas.style.height=`${Math.round(canvas.height*state.zoom)}px`}
     function makeCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
@@ -216,6 +268,10 @@
     canvas.addEventListener('mousedown',e=>{
       if(!state.bgImage)return;
       const p=canvasMousePos(e), L=getLayout();
+      if(state.overlayBg.picking){
+        if(sampleOverlayBgColor(p))return;
+        state.overlayBg.picking=false;setStatus('Đã hủy ống hút màu.');renderPreview();return;
+      }
       if(hitOverlayResize(p)){
         const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-resize';state.drag.startX=p.x;state.drag.startY=p.y;state.drag.startOverlayX=o.x;state.drag.startOverlayY=o.y;state.drag.startOverlayW=o.w;state.drag.startOverlayH=o.h;
         canvas.classList.add('dragging');setStatus('Đang co giãn ảnh dán thêm...');
