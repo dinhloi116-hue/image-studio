@@ -9,6 +9,10 @@ on:
       - 'assets/video-compressor-r199.js'
       - 'assets/nameset-paste-r205.js'
       - 'assets/nameset-layer-toggle-r206.js'
+      - 'assets/halftone-help-r203.js'
+      - 'assets/halftone-zoom-r202.js'
+      - 'assets/halftone-r200.js'
+      - 'assets/stroke-hq-r204.js'
       - 'assets/ffmpeg-worker-r199.js'
       - 'assets/ffmpeg-core.js'
       - 'assets/ffmpeg-core.wasm'
@@ -71,12 +75,12 @@ jobs:
               return f'<script{module} src="tool-scripts/{name}"></script>'
 
           html=script_re.sub(repl,html)
-          html=html.replace('</body>','<script src="assets/nameset-paste-r205.js"></script>\\n<script src="assets/nameset-layer-toggle-r206.js"></script>\\n<script src="extension-update.js"></script>\\n</body>')
+          html=html.replace('</body>','<script src="assets/stroke-hq-r204.js"></script>\\n<script src="assets/halftone-r200.js"></script>\\n<script src="assets/halftone-zoom-r202.js"></script>\\n<script src="assets/nameset-paste-r205.js"></script>\\n<script src="assets/nameset-layer-toggle-r206.js"></script>\\n<script src="extension-update.js"></script>\\n</body>')
           html=html.replace('<title>Image Studio R19</title>','<title>Image Studio DHL - Local</title>')
           (ext/'tool.html').write_text(html,encoding='utf-8')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
-          for name in ['video-compressor-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','nameset-paste-r205.js','nameset-layer-toggle-r206.js']:
+          for name in ['video-compressor-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js']:
               shutil.copy2(root/'assets'/name, assets/name)
 
           vp=assets/'video-compressor-r199.js'
