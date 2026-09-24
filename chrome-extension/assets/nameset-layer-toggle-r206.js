@@ -103,9 +103,6 @@
       if(has && e.target?.closest?.('#p_clipPasteZone'))hideAllForCorel();
     },true);
 
-    const pasteBtn=$('p_clipPasteBtn');
-    if(pasteBtn)pasteBtn.addEventListener('click',hideAllForCorel,true);
-
     window.addEventListener('nameset:corelPaste',hideAllForCorel);
     return true;
   }
