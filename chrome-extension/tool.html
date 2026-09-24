@@ -394,7 +394,7 @@ body.has-files .dropzone{
 .field-tip{font-size:12px;color:#9bb3d5;line-height:1.4}.font-chip{font-size:12px;color:#bfe0ff;background:#081425;border:1px solid #355884;padding:8px 10px;border-radius:10px}
 .inline-btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.preview-list{margin:8px 0 0;padding-left:18px;color:#b6cae8;font-size:13px;line-height:1.5}
 .preview-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.preview-meta{font-size:13px;color:#bcd0ea}
-.preview-status{background:#081425;border:1px solid #274267;color:#d7e7ff;border-radius:12px;padding:10px 12px;font-size:13px;margin:12px 0}.preview-canvas-wrap{min-height:520px;background:radial-gradient(circle at 50% 0%,rgba(59,130,246,.08),transparent 40%), #050d19;border:1px dashed #3a5a87;border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative;padding:20px;flex:1}
+.preview-status{background:#081425;border:1px solid #274267;color:#d7e7ff;border-radius:12px;padding:8px 10px;font-size:12px;margin:8px 0}.preview-canvas-wrap{min-height:280px;background:radial-gradient(circle at 50% 0%,rgba(59,130,246,.08),transparent 40%), #050d19;border:1px dashed #3a5a87;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative;padding:10px;flex:0 1 auto}
 #p_canvas{background:#0b1220;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.3);max-width:100%;height:auto;cursor:grab}#p_canvas.dragging{cursor:grabbing}
 .preview-main{display:flex;flex-direction:column}.preview-note{font-size:12px;color:#9bb3d5;margin-top:10px}
 @media (max-width:1100px){.preview-layout{grid-template-columns:1fr}.preview-sidebar{max-height:none}.two-col{grid-template-columns:1fr}}
@@ -425,7 +425,7 @@ body.has-files .dropzone{
   position:relative;
 }
 .preview-canvas-wrap::after{
-  content:'Kéo trong khung để di chuyển • Kéo ô vuông ở góc để phóng to/thu nhỏ tên số';
+  content:'Ảnh dán: kéo giữa để di chuyển • ô xanh để co giãn • nút tròn ở 4 góc để xoay';
   position:absolute;
   left:20px;
   bottom:18px;
@@ -1549,11 +1549,11 @@ label:has(#renameZipName), .field:has(#rn_zipName), .field:has(#wm_zipName){disp
 
       <section class="preview-main panel">
         <div class="preview-toolbar">
-          <div class="preview-meta"><span class="badge">Preview trực tiếp</span> Kéo khối chữ trên ảnh để đổi vị trí • Kích thước dùng <b>cm</b></div>
+          <div class="preview-meta"><span class="badge">Preview trực tiếp • mặc định 50%</span> Kéo ảnh dán để di chuyển • kéo ô xanh để co giãn • kéo nút tròn góc để xoay</div>
           <div class="inline-btns">
             <button type="button" id="p_zoomOutBtn" class="btn small secondary">- Zoom</button>
             <button type="button" id="p_zoomInBtn" class="btn small secondary">+ Zoom</button>
-            <button type="button" id="p_zoomResetBtn" class="btn small secondary">100%</button>
+            <button type="button" id="p_zoomResetBtn" class="btn small secondary">50%</button>
           </div>
         </div>
         <div id="p_status" class="preview-status">Sẵn sàng. Hãy tải ảnh nền áo để bắt đầu.</div>
