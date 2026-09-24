@@ -146,7 +146,7 @@
       const im=cctx.getImageData(0,0,c.width,c.height),d=im.data,[tr,tg,tb]=state.overlayBg.color;
       const tol=clamp(Number(state.overlayBg.tolerance)||0,0,180),feather=Math.max(6,Math.min(28,tol*.35+5));
       for(let i=0;i<d.length;i+=4){
-        const dr=d[i]-tr,dg=d[i+1]-tg,db=d[i+2]-tb,dist=Math.sqrt(dr*dr+dg*dg+db*db);
+        const dr=Math.abs(d[i]-tr),dg=Math.abs(d[i+1]-tg),db=Math.abs(d[i+2]-tb),dist=Math.max(dr,dg,db);
         if(dist<=tol)d[i+3]=0;
         else if(dist<tol+feather)d[i+3]=Math.round(d[i+3]*((dist-tol)/feather));
       }
