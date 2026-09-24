@@ -1,6 +1,6 @@
 IMAGE STUDIO DHL - LOCAL EXTENSION
 ==================================
-Tool version: R19.9-FFMPEG-AUDIO
+Tool version: R20.6-NAMESET-LAYERS
 
 CÀI LẦN ĐẦU BẰNG GITHUB DESKTOP
 1. GitHub Desktop -> Clone repository: dinhloi116-hue/image-studio

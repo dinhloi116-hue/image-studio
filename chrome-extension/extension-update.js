@@ -1,52 +1,6 @@
 (()=>{
 const REMOTE='https://raw.githubusercontent.com/dinhloi116-hue/image-studio/main/chrome-extension/local-version.json';
 let local={};
-
-/* R20.1: Canvas2D readback optimization.
-   s01.js creates processing canvases and later calls getImageData many times.
-   The first 2D context options are sticky, so initialize those canvases with
-   willReadFrequently:true before any normal getContext('2d') call happens. */
-function installCanvasReadbackFix(){
-  try{
-    const original=window.createCanvas;
-    if(typeof original!=='function' || original.__dhlReadbackOptimized)return;
-    function optimizedCreateCanvas(w,h){
-      const c=original(w,h);
-      try{ c.getContext('2d',{willReadFrequently:true}); }catch(_){ }
-      return c;
-    }
-    optimizedCreateCanvas.__dhlReadbackOptimized=true;
-    optimizedCreateCanvas.__original=original;
-    window.createCanvas=optimizedCreateCanvas;
-  }catch(e){console.warn('Canvas readback optimization skipped',e)}
-}
-
-/* Load the local halftone module for the packaged Chrome extension too.
-   The GitHub Pages version already has this module; this keeps both builds aligned. */
-function loadHalftoneModule(){
-  try{
-    if(window.__HALFTONE_R200 || document.getElementById('dhlHalftoneModule'))return;
-    const s=document.createElement('script');
-    s.id='dhlHalftoneModule';
-    s.src=chrome.runtime.getURL('assets/halftone-r200.js')+'?v=r201';
-    s.async=false;
-    s.onerror=()=>console.error('Không tải được module Tạo tram.');
-    document.head.appendChild(s);
-  }catch(e){console.error('Halftone module loader',e)}
-}
-
-function loadHalftoneZoomModule(){
-  try{
-    if(window.__HALFTONE_ZOOM_R202 || document.getElementById('dhlHalftoneZoomModule'))return;
-    const s=document.createElement('script');
-    s.id='dhlHalftoneZoomModule';
-    s.src=chrome.runtime.getURL('assets/halftone-zoom-r202.js')+'?v=r202';
-    s.async=false;
-    s.onerror=()=>console.error('Không tải được module phóng to ảnh tram.');
-    document.head.appendChild(s);
-  }catch(e){console.error('Halftone zoom loader',e)}
-}
-
 async function readLocal(){try{local=await (await fetch(chrome.runtime.getURL('local-version.json')+'?t='+Date.now(),{cache:'no-store'})).json()}catch(e){local={}}}
 function box(text,buttons=[]){
   let old=document.getElementById('dhlGitUpdateBox');if(old)old.remove();
@@ -73,7 +27,5 @@ function add(){
   if(document.getElementById('dhlGitUpdateBtn'))return;
   const b=document.createElement('button');b.id='dhlGitUpdateBtn';b.className='btn';b.textContent='↻ Cập nhật từ Git';b.title='Kiểm tra bản mới. Sau khi Pull origin trong GitHub Desktop, bấm áp dụng để reload extension.';b.onclick=check;host.appendChild(b);
 }
-function installExtraModules(){installCanvasReadbackFix();loadHalftoneModule();loadHalftoneZoomModule()}
-installExtraModules();
-readLocal().then(add);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{installExtraModules();add()});else add();
+readLocal().then(add);if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add);else add();
 })();
