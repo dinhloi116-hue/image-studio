@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Image Studio DHL - Local",
   "version": "2.0.6",
-  "version_name": "2.0.6 • R20.7-COREL-OVERLAY",
+  "version_name": "2.0.6 • R20.9-ROTATE-UNDO-COMPACT",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
