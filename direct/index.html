@@ -394,7 +394,7 @@ body.has-files .dropzone{
 .field-tip{font-size:12px;color:#9bb3d5;line-height:1.4}.font-chip{font-size:12px;color:#bfe0ff;background:#081425;border:1px solid #355884;padding:8px 10px;border-radius:10px}
 .inline-btns{display:flex;gap:10px;flex-wrap:wrap;align-items:center}.preview-list{margin:8px 0 0;padding-left:18px;color:#b6cae8;font-size:13px;line-height:1.5}
 .preview-toolbar{display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap}.preview-meta{font-size:13px;color:#bcd0ea}
-.preview-status{background:#081425;border:1px solid #274267;color:#d7e7ff;border-radius:12px;padding:10px 12px;font-size:13px;margin:12px 0}.preview-canvas-wrap{min-height:520px;background:radial-gradient(circle at 50% 0%,rgba(59,130,246,.08),transparent 40%), #050d19;border:1px dashed #3a5a87;border-radius:18px;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative;padding:20px;flex:1}
+.preview-status{background:#081425;border:1px solid #274267;color:#d7e7ff;border-radius:12px;padding:8px 10px;font-size:12px;margin:8px 0}.preview-canvas-wrap{min-height:280px;background:radial-gradient(circle at 50% 0%,rgba(59,130,246,.08),transparent 40%), #050d19;border:1px dashed #3a5a87;border-radius:14px;display:flex;align-items:center;justify-content:center;overflow:auto;position:relative;padding:10px;flex:0 1 auto}
 #p_canvas{background:#0b1220;border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.3);max-width:100%;height:auto;cursor:grab}#p_canvas.dragging{cursor:grabbing}
 .preview-main{display:flex;flex-direction:column}.preview-note{font-size:12px;color:#9bb3d5;margin-top:10px}
 @media (max-width:1100px){.preview-layout{grid-template-columns:1fr}.preview-sidebar{max-height:none}.two-col{grid-template-columns:1fr}}
@@ -425,7 +425,7 @@ body.has-files .dropzone{
   position:relative;
 }
 .preview-canvas-wrap::after{
-  content:'Kéo trong khung để di chuyển • Kéo ô vuông ở góc để phóng to/thu nhỏ tên số';
+  content:'Ảnh dán: kéo giữa để di chuyển • ô xanh để co giãn • nút tròn ở 4 góc để xoay';
   position:absolute;
   left:20px;
   bottom:18px;
@@ -1549,11 +1549,11 @@ label:has(#renameZipName), .field:has(#rn_zipName), .field:has(#wm_zipName){disp
 
       <section class="preview-main panel">
         <div class="preview-toolbar">
-          <div class="preview-meta"><span class="badge">Preview trực tiếp</span> Kéo khối chữ trên ảnh để đổi vị trí • Kích thước dùng <b>cm</b></div>
+          <div class="preview-meta"><span class="badge">Preview trực tiếp • mặc định 50%</span> Kéo ảnh dán để di chuyển • kéo ô xanh để co giãn • kéo nút tròn góc để xoay</div>
           <div class="inline-btns">
             <button type="button" id="p_zoomOutBtn" class="btn small secondary">- Zoom</button>
             <button type="button" id="p_zoomInBtn" class="btn small secondary">+ Zoom</button>
-            <button type="button" id="p_zoomResetBtn" class="btn small secondary">100%</button>
+            <button type="button" id="p_zoomResetBtn" class="btn small secondary">50%</button>
           </div>
         </div>
         <div id="p_status" class="preview-status">Sẵn sàng. Hãy tải ảnh nền áo để bắt đầu.</div>
@@ -2926,11 +2926,11 @@ if(typeof window!=='undefined'){
       exportBtn:$('p_exportBtn'),exportJpgBtn:$('p_exportJpgBtn'),maxFileSizeMb:$('p_maxFileSizeMb'),exportName:$('p_exportName'),zoomInBtn:$('p_zoomInBtn'),zoomOutBtn:$('p_zoomOutBtn'),zoomResetBtn:$('p_zoomResetBtn'),status:$('p_status')
     };
     const state={
-      bgImage:null,bgUrl:'',zoom:1,
-      overlayImage:null,overlayUrl:'',overlaySourceCanvas:null,overlayProcessed:null,overlay:{x:0,y:0,w:0,h:0,visible:true,selected:false},overlayBg:{color:null,label:'',tolerance:36,picking:false},
+      bgImage:null,bgUrl:'',zoom:.5,
+      overlayImage:null,overlayUrl:'',overlaySourceCanvas:null,overlayProcessed:null,overlay:{x:0,y:0,w:0,h:0,rotation:0,visible:true,selected:false},overlayHistory:[],overlayBg:{color:null,label:'',tolerance:36,picking:false},
       nameFontFamily:'Arial, sans-serif',
       numberFontFamily:'Arial Black, Arial, sans-serif',
-      drag:{active:false,mode:'move',offsetX:0,offsetY:0,startX:0,startY:0,startW:0,startH:0,startNameCm:4,startNumCm:22,startGapCm:2,startOverlayX:0,startOverlayY:0,startOverlayW:0,startOverlayH:0}
+      drag:{active:false,mode:'move',offsetX:0,offsetY:0,startX:0,startY:0,startW:0,startH:0,startNameCm:4,startNumCm:22,startGapCm:2,startOverlayX:0,startOverlayY:0,startOverlayW:0,startOverlayH:0,startCenterX:0,startCenterY:0,startOverlayRotation:0,startPointerAngle:0}
     };
     function setStatus(msg){ if(els.status) els.status.textContent=msg; }
     function safeName(name){
@@ -2971,23 +2971,50 @@ if(typeof window!=='undefined'){
       for(const [x,y] of pts){ctx.beginPath();ctx.rect(x-hs/2,y-hs/2,hs,hs);ctx.fill();ctx.stroke();}
       ctx.restore();
     }
-    function overlayRect(){const o=state.overlay;return{left:o.x,top:o.y,right:o.x+o.w,bottom:o.y+o.h,width:o.w,height:o.h}}
+    function overlayCenter(o=state.overlay){return{x:o.x+o.w/2,y:o.y+o.h/2}}
+    function overlayAxes(angle=state.overlay.rotation||0){const c=Math.cos(angle),sn=Math.sin(angle);return{ux:{x:c,y:sn},uy:{x:-sn,y:c}}}
+    function overlayToWorld(lx,ly,o=state.overlay){
+      const c=overlayCenter(o),a=overlayAxes(o.rotation||0),dx=lx-o.w/2,dy=ly-o.h/2;
+      return{x:c.x+a.ux.x*dx+a.uy.x*dy,y:c.y+a.ux.y*dx+a.uy.y*dy};
+    }
+    function overlayToLocal(p,o=state.overlay){
+      const c=overlayCenter(o),a=overlayAxes(o.rotation||0),dx=p.x-c.x,dy=p.y-c.y;
+      return{x:dx*a.ux.x+dy*a.ux.y+o.w/2,y:dx*a.uy.x+dy*a.uy.y+o.h/2};
+    }
     function overlayHandlePoints(){
-      const r=overlayRect(),cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
+      const o=state.overlay;
       return{
-        nw:{x:r.left,y:r.top},n:{x:cx,y:r.top},ne:{x:r.right,y:r.top},
-        e:{x:r.right,y:cy},se:{x:r.right,y:r.bottom},s:{x:cx,y:r.bottom},
-        sw:{x:r.left,y:r.bottom},w:{x:r.left,y:cy}
+        nw:overlayToWorld(0,0,o),n:overlayToWorld(o.w/2,0,o),ne:overlayToWorld(o.w,0,o),
+        e:overlayToWorld(o.w,o.h/2,o),se:overlayToWorld(o.w,o.h,o),s:overlayToWorld(o.w/2,o.h,o),
+        sw:overlayToWorld(0,o.h,o),w:overlayToWorld(0,o.h/2,o)
       };
+    }
+    function overlayRotatePoints(){
+      const pts=overlayHandlePoints(),c=overlayCenter(),out=Math.max(42,Math.min(72,canvas.width/18)),r={};
+      for(const key of ['nw','ne','se','sw']){
+        const p=pts[key],dx=p.x-c.x,dy=p.y-c.y,len=Math.max(1,Math.hypot(dx,dy));
+        r[key]={x:p.x+dx/len*out,y:p.y+dy/len*out};
+      }
+      return r;
+    }
+    function overlayRect(){
+      const pts=overlayHandlePoints(),arr=['nw','ne','se','sw'].map(k=>pts[k]),xs=arr.map(p=>p.x),ys=arr.map(p=>p.y);
+      return{left:Math.min(...xs),top:Math.min(...ys),right:Math.max(...xs),bottom:Math.max(...ys),width:Math.max(...xs)-Math.min(...xs),height:Math.max(...ys)-Math.min(...ys)};
     }
     function drawOverlayHandles(){
       if(!state.overlayImage||!state.overlay.visible)return;
-      const r=overlayRect(),hs=Math.max(14,Math.min(24,canvas.width/62)),pts=overlayHandlePoints();
-      ctx.save();ctx.setLineDash([9,6]);ctx.strokeStyle='rgba(34,197,94,.98)';ctx.lineWidth=2;
-      ctx.strokeRect(r.left-4,r.top-4,r.width+8,r.height+8);ctx.setLineDash([]);
+      const pts=overlayHandlePoints(),rots=overlayRotatePoints(),hs=Math.max(22,Math.min(34,canvas.width/36)),rr=Math.max(16,Math.min(24,canvas.width/48));
+      ctx.save();
+      ctx.setLineDash([9,6]);ctx.strokeStyle='rgba(34,197,94,.98)';ctx.lineWidth=2;
+      ctx.beginPath();ctx.moveTo(pts.nw.x,pts.nw.y);ctx.lineTo(pts.ne.x,pts.ne.y);ctx.lineTo(pts.se.x,pts.se.y);ctx.lineTo(pts.sw.x,pts.sw.y);ctx.closePath();ctx.stroke();ctx.setLineDash([]);
       ctx.fillStyle='#22c55e';ctx.strokeStyle='#ecfdf5';ctx.lineWidth=2;
       for(const key of ['nw','n','ne','e','se','s','sw','w']){
         const p=pts[key];ctx.beginPath();ctx.rect(p.x-hs/2,p.y-hs/2,hs,hs);ctx.fill();ctx.stroke();
+      }
+      ctx.strokeStyle='#fbbf24';ctx.fillStyle='#111827';ctx.lineWidth=2.4;ctx.font=`bold ${Math.max(18,Math.min(28,canvas.width/44))}px Arial`;ctx.textAlign='center';ctx.textBaseline='middle';
+      for(const key of ['nw','ne','se','sw']){
+        const p=pts[key],r=rots[key];ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(r.x,r.y);ctx.stroke();
+        ctx.beginPath();ctx.arc(r.x,r.y,rr,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle='#fbbf24';ctx.fillText('↻',r.x,r.y+1);ctx.fillStyle='#111827';
       }
       ctx.restore();
     }
@@ -2996,7 +3023,7 @@ if(typeof window!=='undefined'){
       if(state.bgImage){ctx.drawImage(state.bgImage,0,0,canvas.width,canvas.height)}
       else{ctx.fillStyle='#0b1220';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.fillStyle='rgba(255,255,255,.25)';ctx.font='bold 28px Arial';ctx.textAlign='center';ctx.fillText('Hãy tải ảnh preview áo để bắt đầu',canvas.width/2,canvas.height/2);if(guides)drawRuler();return}
       if(state.overlayImage&&state.overlay.visible){
-        const o=state.overlay;ctx.drawImage(state.overlayProcessed||state.overlayImage,o.x,o.y,o.w,o.h);
+        const o=state.overlay,c=overlayCenter(o);ctx.save();ctx.translate(c.x,c.y);ctx.rotate(o.rotation||0);ctx.drawImage(state.overlayProcessed||state.overlayImage,-o.w/2,-o.h/2,o.w,o.h);ctx.restore();
       }
       const L=getLayout();
       if(L.name)drawSpacedText(L.name,L.centerX,L.nameBaseline,state.nameFontFamily,L.nameFontPx,L.nameTrackingPx,els.nameColor.value,L.strokePx,els.strokeColor.value,'center','700');
@@ -3049,7 +3076,7 @@ if(typeof window!=='undefined'){
     function sampleOverlayBgColor(p){
       if(!state.overlayImage||!pointInOverlay(p))return false;
       const src=ensureOverlaySourceCanvas();if(!src)return false;
-      const o=state.overlay,rx=clamp((p.x-o.x)/Math.max(1,o.w),0,0.999999),ry=clamp((p.y-o.y)/Math.max(1,o.h),0,0.999999);
+      const o=state.overlay,lp=overlayToLocal(p,o),rx=clamp(lp.x/Math.max(1,o.w),0,0.999999),ry=clamp(lp.y/Math.max(1,o.h),0,0.999999);
       const sx=clamp(Math.floor(rx*src.width),0,src.width-1),sy=clamp(Math.floor(ry*src.height),0,src.height-1);
       const px=src.getContext('2d',{willReadFrequently:true}).getImageData(sx,sy,1,1).data,rgb=[px[0],px[1],px[2]],hex=rgbHex(rgb);
       setOverlayBgColor(rgb,hex);
@@ -3057,26 +3084,39 @@ if(typeof window!=='undefined'){
       setStatus(`Đã chích màu nền ${hex}. Có thể tăng/giảm dung sai nếu mép còn viền.`);
       return true;
     }
-    function resetOverlayPosition(){
+    function overlaySnapshot(){const o=state.overlay;return{x:o.x,y:o.y,w:o.w,h:o.h,rotation:o.rotation||0,visible:o.visible}}
+    function notifyOverlayUndo(){window.dispatchEvent(new CustomEvent('nameset:overlayUndoState',{detail:{available:state.overlayHistory.length>0,count:state.overlayHistory.length}}))}
+    function pushOverlayHistory(){
+      if(!state.overlayImage||state.overlay.w<=0||state.overlay.h<=0)return;
+      const snap=overlaySnapshot(),last=state.overlayHistory[state.overlayHistory.length-1];
+      if(last&&Math.abs(last.x-snap.x)<.01&&Math.abs(last.y-snap.y)<.01&&Math.abs(last.w-snap.w)<.01&&Math.abs(last.h-snap.h)<.01&&Math.abs((last.rotation||0)-(snap.rotation||0))<.0001)return;
+      state.overlayHistory.push(snap);if(state.overlayHistory.length>40)state.overlayHistory.shift();notifyOverlayUndo();
+    }
+    function undoOverlay(){
+      if(!state.overlayImage||!state.overlayHistory.length){setStatus('Chưa có thao tác ảnh dán để hoàn tác.');notifyOverlayUndo();return}
+      const snap=state.overlayHistory.pop();Object.assign(state.overlay,snap);notifyOverlayUndo();renderPreview();setStatus('Đã hoàn tác thao tác gần nhất của ảnh dán.');
+    }
+    function resetOverlayPosition(record=true){
       if(!state.overlayImage)return;
+      if(record)pushOverlayHistory();
       const img=state.overlayImage;
       const scale=Math.min(1,(canvas.width*.62)/Math.max(1,img.naturalWidth),(canvas.height*.58)/Math.max(1,img.naturalHeight));
       state.overlay.w=Math.max(20,img.naturalWidth*scale);state.overlay.h=Math.max(20,img.naturalHeight*scale);
-      state.overlay.x=(canvas.width-state.overlay.w)/2;state.overlay.y=Math.max(0,canvas.height*.10);
+      state.overlay.x=(canvas.width-state.overlay.w)/2;state.overlay.y=Math.max(0,canvas.height*.10);state.overlay.rotation=0;
       state.overlay.visible=true;state.overlay.selected=true;renderPreview();
     }
     function loadOverlay(file){
       if(!file)return;
       const url=URL.createObjectURL(file),img=new Image();
-      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;ensureOverlaySourceCanvas();resetOverlayPosition();window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo giữa ảnh để di chuyển • kéo 4 góc/cạnh xanh để co giãn.`);renderPreview();};
+      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayHistory=[];state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;ensureOverlaySourceCanvas();resetOverlayPosition(false);notifyOverlayUndo();window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo giữa để di chuyển • ô xanh để co giãn • nút tròn góc để xoay.`);renderPreview();};
       img.onerror=()=>{safeRevoke(url);setStatus('Không đọc được ảnh dán thêm.');};
       img.src=url;
     }
-    function clearOverlay(){safeRevoke(state.overlayUrl);state.overlayImage=null;state.overlayUrl='';state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;state.overlay.selected=false;window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));renderPreview();setStatus('Đã xóa ảnh dán thêm.')}
+    function clearOverlay(){safeRevoke(state.overlayUrl);state.overlayImage=null;state.overlayUrl='';state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayHistory=[];state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;state.overlay.rotation=0;state.overlay.selected=false;notifyOverlayUndo();window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));renderPreview();setStatus('Đã xóa ảnh dán thêm.')}
     function toggleOverlay(force){if(!state.overlayImage)return;state.overlay.visible=typeof force==='boolean'?force:!state.overlay.visible;renderPreview();setStatus(state.overlay.visible?'Đã hiện ảnh dán thêm.':'Đã ẩn ảnh dán thêm.')}
-    window.namesetPreviewOverlay={loadOverlay,clearOverlay,toggleOverlay,resetOverlayPosition,setOverlayBgColor,setOverlayBgTolerance,beginOverlayBgPick,get state(){return state.overlay},get bg(){return state.overlayBg}};
+    window.namesetPreviewOverlay={loadOverlay,clearOverlay,toggleOverlay,resetOverlayPosition,undoOverlay,setOverlayBgColor,setOverlayBgTolerance,beginOverlayBgPick,get state(){return state.overlay},get bg(){return state.overlayBg}};
     window.addEventListener('nameset:overlayFile',e=>{const f=e.detail&&e.detail.file;if(f)loadOverlay(f)});
-    window.addEventListener('nameset:overlayCommand',e=>{const d=e.detail||{},cmd=d.command;if(cmd==='clear')clearOverlay();else if(cmd==='toggle')toggleOverlay();else if(cmd==='reset')resetOverlayPosition();else if(cmd==='bg-none')setOverlayBgColor(null,'');else if(cmd==='bg-white')setOverlayBgColor([255,255,255],'trắng');else if(cmd==='bg-black')setOverlayBgColor([0,0,0],'đen');else if(cmd==='bg-pick')beginOverlayBgPick();else if(cmd==='bg-tolerance')setOverlayBgTolerance(d.value)});
+    window.addEventListener('nameset:overlayCommand',e=>{const d=e.detail||{},cmd=d.command;if(cmd==='clear')clearOverlay();else if(cmd==='toggle')toggleOverlay();else if(cmd==='reset')resetOverlayPosition();else if(cmd==='undo')undoOverlay();else if(cmd==='bg-none')setOverlayBgColor(null,'');else if(cmd==='bg-white')setOverlayBgColor([255,255,255],'trắng');else if(cmd==='bg-black')setOverlayBgColor([0,0,0],'đen');else if(cmd==='bg-pick')beginOverlayBgPick();else if(cmd==='bg-tolerance')setOverlayBgTolerance(d.value)});
     function autoCenterDefaults(){if(els.centerXCm)els.centerXCm.value=(pxToCm(canvas.width/2)).toFixed(1);if(els.topYCm)els.topYCm.value=Math.max(0,pxToCm(canvas.height*.12)).toFixed(1)}
     function fitCanvas(){canvas.style.width=`${Math.round(canvas.width*state.zoom)}px`;canvas.style.height=`${Math.round(canvas.height*state.zoom)}px`}
     function makeCanvas(w,h){const c=document.createElement('canvas');c.width=w;c.height=h;return c}
@@ -3129,16 +3169,19 @@ if(typeof window!=='undefined'){
       return false;
     }
     function pointInBlock(p,L){return p.x>=L.blockLeft-14&&p.x<=L.blockRight+14&&p.y>=L.blockTop-14&&p.y<=L.blockBottom+14}
-    function pointInOverlay(p){if(!state.overlayImage||!state.overlay.visible)return false;const r=overlayRect();return p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom}
+    function pointInOverlay(p){
+      if(!state.overlayImage||!state.overlay.visible)return false;
+      const lp=overlayToLocal(p);return lp.x>=0&&lp.x<=state.overlay.w&&lp.y>=0&&lp.y<=state.overlay.h;
+    }
     function hitOverlayHandle(p){
       if(!state.overlayImage||!state.overlay.visible)return '';
-      const pts=overlayHandlePoints(),hs=Math.max(18,Math.min(32,canvas.width/48));
-      for(const key of ['nw','n','ne','e','se','s','sw','w']){
-        const h=pts[key];if(Math.abs(p.x-h.x)<=hs&&Math.abs(p.y-h.y)<=hs)return key;
-      }
+      const rots=overlayRotatePoints(),resize=overlayHandlePoints(),rr=Math.max(22,Math.min(34,canvas.width/44)),hs=Math.max(20,Math.min(32,canvas.width/48));
+      for(const key of ['nw','ne','se','sw']){const h=rots[key];if(Math.hypot(p.x-h.x,p.y-h.y)<=rr)return 'rotate-'+key;}
+      for(const key of ['nw','n','ne','e','se','s','sw','w']){const h=resize[key];if(Math.abs(p.x-h.x)<=hs&&Math.abs(p.y-h.y)<=hs)return key;}
       return '';
     }
     function overlayCursor(handle){
+      if(String(handle).startsWith('rotate-'))return'grab';
       if(handle==='nw'||handle==='se')return'nwse-resize';
       if(handle==='ne'||handle==='sw')return'nesw-resize';
       if(handle==='n'||handle==='s')return'ns-resize';
@@ -3146,32 +3189,23 @@ if(typeof window!=='undefined'){
       return handle?'move':'default';
     }
     function resizeOverlayFromHandle(handle,p){
-      const d=state.drag,o=state.overlay,minSize=Math.max(24,canvas.width*.018);
-      const x0=d.startOverlayX,y0=d.startOverlayY,w0=Math.max(minSize,d.startOverlayW),h0=Math.max(minSize,d.startOverlayH),x1=x0+w0,y1=y0+h0;
-      let nx=x0,ny=y0,nw=w0,nh=h0;
-      if(handle==='e')nw=Math.max(minSize,p.x-x0);
-      else if(handle==='w'){nx=Math.min(p.x,x1-minSize);nw=x1-nx;}
-      else if(handle==='s')nh=Math.max(minSize,p.y-y0);
-      else if(handle==='n'){ny=Math.min(p.y,y1-minSize);nh=y1-ny;}
-      else{
-        const aspect=w0/Math.max(1,h0),minScale=Math.max(minSize/w0,minSize/h0);
-        let anchorX=x0,anchorY=y0,cw=w0,ch=h0;
-        if(handle==='se'){anchorX=x0;anchorY=y0;cw=p.x-anchorX;ch=p.y-anchorY;}
-        if(handle==='nw'){anchorX=x1;anchorY=y1;cw=anchorX-p.x;ch=anchorY-p.y;}
-        if(handle==='ne'){anchorX=x0;anchorY=y1;cw=p.x-anchorX;ch=anchorY-p.y;}
-        if(handle==='sw'){anchorX=x1;anchorY=y0;cw=anchorX-p.x;ch=p.y-anchorY;}
-        let scale=Math.max(minScale,Math.max(cw/w0,ch/h0));
-        if(!Number.isFinite(scale))scale=1;
-        nw=Math.max(minSize,w0*scale);nh=Math.max(minSize,nw/aspect);
-        if(handle==='nw'){nx=x1-nw;ny=y1-nh;}
-        else if(handle==='ne'){nx=x0;ny=y1-nh;}
-        else if(handle==='sw'){nx=x1-nw;ny=y0;}
-        else{nx=x0;ny=y0;}
+      const d=state.drag,o=state.overlay,minSize=Math.max(24,canvas.width*.018),w0=Math.max(minSize,d.startOverlayW),h0=Math.max(minSize,d.startOverlayH),a=overlayAxes(d.startOverlayRotation||0);
+      const c0={x:d.startCenterX,y:d.startCenterY},dot=(v,b)=>v.x*b.x+v.y*b.y;
+      const worldLocal=(lx,ly)=>({x:c0.x+a.ux.x*lx+a.uy.x*ly,y:c0.y+a.ux.y*lx+a.uy.y*ly});
+      let fixed,sx=0,sy=0,nw=w0,nh=h0,center={...c0};
+      if(handle==='e'||handle==='w'){
+        sx=handle==='e'?1:-1;fixed=worldLocal(-sx*w0/2,0);const v={x:p.x-fixed.x,y:p.y-fixed.y};nw=Math.max(minSize,sx*dot(v,a.ux));center={x:fixed.x+a.ux.x*sx*nw/2,y:fixed.y+a.ux.y*sx*nw/2};
+      }else if(handle==='n'||handle==='s'){
+        sy=handle==='s'?1:-1;fixed=worldLocal(0,-sy*h0/2);const v={x:p.x-fixed.x,y:p.y-fixed.y};nh=Math.max(minSize,sy*dot(v,a.uy));center={x:fixed.x+a.uy.x*sy*nh/2,y:fixed.y+a.uy.y*sy*nh/2};
+      }else{
+        sx=(handle==='ne'||handle==='se')?1:-1;sy=(handle==='sw'||handle==='se')?1:-1;
+        fixed=worldLocal(-sx*w0/2,-sy*h0/2);const v={x:p.x-fixed.x,y:p.y-fixed.y};
+        const cw=Math.max(minSize,sx*dot(v,a.ux)),ch=Math.max(minSize,sy*dot(v,a.uy)),minScale=Math.max(minSize/w0,minSize/h0);
+        let scale=Math.max(minScale,Math.max(cw/w0,ch/h0));if(!Number.isFinite(scale))scale=1;
+        nw=w0*scale;nh=h0*scale;center={x:fixed.x+a.ux.x*sx*nw/2+a.uy.x*sy*nh/2,y:fixed.y+a.ux.y*sx*nw/2+a.uy.y*sy*nh/2};
       }
-      const maxW=canvas.width*2,maxH=canvas.height*2;
-      if(nw>maxW){const k=maxW/nw;nw=maxW;if(handle.length===2)nh*=k;}
-      if(nh>maxH){const k=maxH/nh;nh=maxH;if(handle.length===2)nw*=k;}
-      o.x=nx;o.y=ny;o.w=nw;o.h=nh;
+      const maxW=canvas.width*2,maxH=canvas.height*2,k=Math.min(1,maxW/Math.max(1,nw),maxH/Math.max(1,nh));if(k<1){nw*=k;nh*=k}
+      o.w=nw;o.h=nh;o.x=center.x-nw/2;o.y=center.y-nh/2;o.rotation=d.startOverlayRotation||0;
     }
     ['p_nameText','p_numberText','p_uppercaseName','p_nameHeightCm','p_numberHeightCm','p_gapCm','p_pxPerCm','p_nameTrackingCm','p_numberTrackingCm','p_strokePx','p_centerXCm','p_topYCm','p_nameColor','p_numberColor','p_strokeColor','p_showRuler'].forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',()=>renderPreview());el.addEventListener('change',()=>renderPreview())});
     if(els.bgFile)els.bgFile.addEventListener('change',e=>loadBackground(e.target.files[0]));
@@ -3183,7 +3217,7 @@ if(typeof window!=='undefined'){
     if(els.resetPosBtn)els.resetPosBtn.addEventListener('click',()=>{autoCenterDefaults();renderPreview();setStatus('Đã đặt lại vị trí khối chữ.')});
     if(els.zoomInBtn)els.zoomInBtn.addEventListener('click',()=>{state.zoom=clamp(state.zoom+.1,.2,4);fitCanvas()});
     if(els.zoomOutBtn)els.zoomOutBtn.addEventListener('click',()=>{state.zoom=clamp(state.zoom-.1,.2,4);fitCanvas()});
-    if(els.zoomResetBtn)els.zoomResetBtn.addEventListener('click',()=>{state.zoom=1;fitCanvas()});
+    if(els.zoomResetBtn)els.zoomResetBtn.addEventListener('click',()=>{state.zoom=.5;fitCanvas();setStatus('Preview về 50%.')});
     canvas.addEventListener('mousedown',e=>{
       if(!state.bgImage)return;
       const p=canvasMousePos(e), L=getLayout();
@@ -3193,10 +3227,14 @@ if(typeof window!=='undefined'){
       }
       const overlayHandle=hitOverlayHandle(p);
       if(overlayHandle){
-        const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-resize-'+overlayHandle;state.drag.startX=p.x;state.drag.startY=p.y;state.drag.startOverlayX=o.x;state.drag.startOverlayY=o.y;state.drag.startOverlayW=o.w;state.drag.startOverlayH=o.h;
-        canvas.style.cursor=overlayCursor(overlayHandle);canvas.classList.add('dragging');setStatus('Đang co giãn ảnh dán thêm...');
+        pushOverlayHistory();
+        const o=state.overlay,c=overlayCenter(o);state.drag.active=true;state.drag.startX=p.x;state.drag.startY=p.y;state.drag.startOverlayX=o.x;state.drag.startOverlayY=o.y;state.drag.startOverlayW=o.w;state.drag.startOverlayH=o.h;state.drag.startCenterX=c.x;state.drag.startCenterY=c.y;state.drag.startOverlayRotation=o.rotation||0;
+        if(overlayHandle.startsWith('rotate-')){state.drag.mode='overlay-'+overlayHandle;state.drag.startPointerAngle=Math.atan2(p.y-c.y,p.x-c.x);setStatus('Đang xoay ảnh dán thêm...');}
+        else{state.drag.mode='overlay-resize-'+overlayHandle;setStatus('Đang co giãn ảnh dán thêm...');}
+        canvas.style.cursor=overlayCursor(overlayHandle);canvas.classList.add('dragging');
       }else if(pointInOverlay(p)){
-        const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-move';state.drag.offsetX=p.x-o.x;state.drag.offsetY=p.y-o.y;
+        pushOverlayHistory();
+        const o=state.overlay,c=overlayCenter(o);state.drag.active=true;state.drag.mode='overlay-move';state.drag.offsetX=p.x-c.x;state.drag.offsetY=p.y-c.y;state.drag.startCenterX=c.x;state.drag.startCenterY=c.y;
         canvas.classList.add('dragging');setStatus('Đang di chuyển ảnh dán thêm...');
       }else if((L.name||L.number)&&hitResizeHandle(p,L)){
         state.drag.active=true;state.drag.mode='resize';state.drag.startY=p.y;state.drag.startW=L.blockWidth;state.drag.startH=L.blockHeight;
@@ -3210,9 +3248,13 @@ if(typeof window!=='undefined'){
       if(!state.drag.active)return;
       const p=canvasMousePos(e);
       if(state.drag.mode==='overlay-move'){
-        const o=state.overlay;o.x=clamp(p.x-state.drag.offsetX,-o.w*.85,canvas.width-o.w*.15);o.y=clamp(p.y-state.drag.offsetY,-o.h*.85,canvas.height-o.h*.15);
+        const o=state.overlay,cx=p.x-state.drag.offsetX,cy=p.y-state.drag.offsetY;o.x=clamp(cx-o.w/2,-o.w*.85,canvas.width-o.w*.15);o.y=clamp(cy-o.h/2,-o.h*.85,canvas.height-o.h*.15);
       }else if(state.drag.mode.startsWith('overlay-resize-')){
         resizeOverlayFromHandle(state.drag.mode.replace('overlay-resize-',''),p);
+      }else if(state.drag.mode.startsWith('overlay-rotate-')){
+        const o=state.overlay,c={x:state.drag.startCenterX,y:state.drag.startCenterY},now=Math.atan2(p.y-c.y,p.x-c.x);let angle=state.drag.startOverlayRotation+(now-state.drag.startPointerAngle);
+        if(e.shiftKey){const step=Math.PI/12;angle=Math.round(angle/step)*step}
+        o.rotation=angle;
       }else if(state.drag.mode==='move'){
         const newCenter=p.x-state.drag.offsetX,newTop=p.y-state.drag.offsetY;
         if(els.centerXCm)els.centerXCm.value=pxToCm(newCenter).toFixed(2);
@@ -3240,7 +3282,14 @@ if(typeof window!=='undefined'){
       else canvas.style.cursor='default';
     });
     canvas.addEventListener('mouseleave',()=>{if(!state.drag.active)canvas.style.cursor='default'});
-    window.addEventListener('mouseup',()=>{if(state.drag.active)setStatus(state.drag.mode.startsWith('overlay-')?'Đã cập nhật vị trí/kích thước ảnh dán thêm.':'Đã cập nhật vị trí/kích thước tên số.');state.drag.active=false;canvas.classList.remove('dragging');canvas.style.cursor='default'});
+    window.addEventListener('mouseup',()=>{
+      if(state.drag.active){
+        if(state.drag.mode.startsWith('overlay-rotate-'))setStatus(`Đã xoay ảnh dán: ${Math.round((state.overlay.rotation||0)*180/Math.PI)}°.`);
+        else if(state.drag.mode.startsWith('overlay-'))setStatus('Đã cập nhật vị trí/kích thước ảnh dán thêm.');
+        else setStatus('Đã cập nhật vị trí/kích thước tên số.');
+      }
+      state.drag.active=false;canvas.classList.remove('dragging');canvas.style.cursor='default';
+    });
     
     function isPreviewMode(){ try{return localStorage.getItem('pip_mainMode')==='preview'}catch(e){return document.body.dataset.mode==='preview'} }
     function interceptTopForPreview(id, handler){
