@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "Image Studio DHL - Local",
-  "version": "2.0.3",
-  "version_name": "2.0.3 • R20.4-STROKE-HQ",
+  "version": "2.0.4",
+  "version_name": "2.0.4 • R20.5-COREL-PASTE",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
     "downloads",
-    "tabs"
+    "tabs",
+    "clipboardRead"
   ],
   "host_permissions": [
     "https://raw.githubusercontent.com/*"
