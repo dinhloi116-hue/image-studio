@@ -2972,13 +2972,24 @@ if(typeof window!=='undefined'){
       ctx.restore();
     }
     function overlayRect(){const o=state.overlay;return{left:o.x,top:o.y,right:o.x+o.w,bottom:o.y+o.h,width:o.w,height:o.h}}
+    function overlayHandlePoints(){
+      const r=overlayRect(),cx=(r.left+r.right)/2,cy=(r.top+r.bottom)/2;
+      return{
+        nw:{x:r.left,y:r.top},n:{x:cx,y:r.top},ne:{x:r.right,y:r.top},
+        e:{x:r.right,y:cy},se:{x:r.right,y:r.bottom},s:{x:cx,y:r.bottom},
+        sw:{x:r.left,y:r.bottom},w:{x:r.left,y:cy}
+      };
+    }
     function drawOverlayHandles(){
       if(!state.overlayImage||!state.overlay.visible)return;
-      const r=overlayRect(),hs=Math.max(16,Math.min(28,canvas.width/55));
-      ctx.save();ctx.setLineDash([9,6]);ctx.strokeStyle='rgba(34,197,94,.95)';ctx.lineWidth=2;
+      const r=overlayRect(),hs=Math.max(14,Math.min(24,canvas.width/62)),pts=overlayHandlePoints();
+      ctx.save();ctx.setLineDash([9,6]);ctx.strokeStyle='rgba(34,197,94,.98)';ctx.lineWidth=2;
       ctx.strokeRect(r.left-4,r.top-4,r.width+8,r.height+8);ctx.setLineDash([]);
-      ctx.fillStyle='#16a34a';ctx.strokeStyle='#dcfce7';ctx.lineWidth=2;
-      ctx.beginPath();ctx.rect(r.right-hs/2,r.bottom-hs/2,hs,hs);ctx.fill();ctx.stroke();ctx.restore();
+      ctx.fillStyle='#22c55e';ctx.strokeStyle='#ecfdf5';ctx.lineWidth=2;
+      for(const key of ['nw','n','ne','e','se','s','sw','w']){
+        const p=pts[key];ctx.beginPath();ctx.rect(p.x-hs/2,p.y-hs/2,hs,hs);ctx.fill();ctx.stroke();
+      }
+      ctx.restore();
     }
     function renderPreview(guides=true){
       ctx.clearRect(0,0,canvas.width,canvas.height);
@@ -3057,7 +3068,7 @@ if(typeof window!=='undefined'){
     function loadOverlay(file){
       if(!file)return;
       const url=URL.createObjectURL(file),img=new Image();
-      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;ensureOverlaySourceCanvas();resetOverlayPosition();window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo để di chuyển, kéo ô xanh góc phải dưới để co giãn.`);renderPreview();};
+      img.onload=()=>{safeRevoke(state.overlayUrl);state.overlayImage=img;state.overlayUrl=url;state.overlaySourceCanvas=null;state.overlayProcessed=null;state.overlayBg.color=null;state.overlayBg.label='';state.overlayBg.picking=false;ensureOverlaySourceCanvas();resetOverlayPosition();window.dispatchEvent(new CustomEvent('nameset:overlayBgReset'));setStatus(`Đã dán thêm ảnh: ${file.name||'clipboard'} • kéo giữa ảnh để di chuyển • kéo 4 góc/cạnh xanh để co giãn.`);renderPreview();};
       img.onerror=()=>{safeRevoke(url);setStatus('Không đọc được ảnh dán thêm.');};
       img.src=url;
     }
@@ -3119,7 +3130,49 @@ if(typeof window!=='undefined'){
     }
     function pointInBlock(p,L){return p.x>=L.blockLeft-14&&p.x<=L.blockRight+14&&p.y>=L.blockTop-14&&p.y<=L.blockBottom+14}
     function pointInOverlay(p){if(!state.overlayImage||!state.overlay.visible)return false;const r=overlayRect();return p.x>=r.left&&p.x<=r.right&&p.y>=r.top&&p.y<=r.bottom}
-    function hitOverlayResize(p){if(!state.overlayImage||!state.overlay.visible)return false;const r=overlayRect(),hs=Math.max(20,Math.min(34,canvas.width/45));return Math.abs(p.x-r.right)<=hs&&Math.abs(p.y-r.bottom)<=hs}
+    function hitOverlayHandle(p){
+      if(!state.overlayImage||!state.overlay.visible)return '';
+      const pts=overlayHandlePoints(),hs=Math.max(18,Math.min(32,canvas.width/48));
+      for(const key of ['nw','n','ne','e','se','s','sw','w']){
+        const h=pts[key];if(Math.abs(p.x-h.x)<=hs&&Math.abs(p.y-h.y)<=hs)return key;
+      }
+      return '';
+    }
+    function overlayCursor(handle){
+      if(handle==='nw'||handle==='se')return'nwse-resize';
+      if(handle==='ne'||handle==='sw')return'nesw-resize';
+      if(handle==='n'||handle==='s')return'ns-resize';
+      if(handle==='e'||handle==='w')return'ew-resize';
+      return handle?'move':'default';
+    }
+    function resizeOverlayFromHandle(handle,p){
+      const d=state.drag,o=state.overlay,minSize=Math.max(24,canvas.width*.018);
+      const x0=d.startOverlayX,y0=d.startOverlayY,w0=Math.max(minSize,d.startOverlayW),h0=Math.max(minSize,d.startOverlayH),x1=x0+w0,y1=y0+h0;
+      let nx=x0,ny=y0,nw=w0,nh=h0;
+      if(handle==='e')nw=Math.max(minSize,p.x-x0);
+      else if(handle==='w'){nx=Math.min(p.x,x1-minSize);nw=x1-nx;}
+      else if(handle==='s')nh=Math.max(minSize,p.y-y0);
+      else if(handle==='n'){ny=Math.min(p.y,y1-minSize);nh=y1-ny;}
+      else{
+        const aspect=w0/Math.max(1,h0),minScale=Math.max(minSize/w0,minSize/h0);
+        let anchorX=x0,anchorY=y0,cw=w0,ch=h0;
+        if(handle==='se'){anchorX=x0;anchorY=y0;cw=p.x-anchorX;ch=p.y-anchorY;}
+        if(handle==='nw'){anchorX=x1;anchorY=y1;cw=anchorX-p.x;ch=anchorY-p.y;}
+        if(handle==='ne'){anchorX=x0;anchorY=y1;cw=p.x-anchorX;ch=anchorY-p.y;}
+        if(handle==='sw'){anchorX=x1;anchorY=y0;cw=anchorX-p.x;ch=p.y-anchorY;}
+        let scale=Math.max(minScale,Math.max(cw/w0,ch/h0));
+        if(!Number.isFinite(scale))scale=1;
+        nw=Math.max(minSize,w0*scale);nh=Math.max(minSize,nw/aspect);
+        if(handle==='nw'){nx=x1-nw;ny=y1-nh;}
+        else if(handle==='ne'){nx=x0;ny=y1-nh;}
+        else if(handle==='sw'){nx=x1-nw;ny=y0;}
+        else{nx=x0;ny=y0;}
+      }
+      const maxW=canvas.width*2,maxH=canvas.height*2;
+      if(nw>maxW){const k=maxW/nw;nw=maxW;if(handle.length===2)nh*=k;}
+      if(nh>maxH){const k=maxH/nh;nh=maxH;if(handle.length===2)nw*=k;}
+      o.x=nx;o.y=ny;o.w=nw;o.h=nh;
+    }
     ['p_nameText','p_numberText','p_uppercaseName','p_nameHeightCm','p_numberHeightCm','p_gapCm','p_pxPerCm','p_nameTrackingCm','p_numberTrackingCm','p_strokePx','p_centerXCm','p_topYCm','p_nameColor','p_numberColor','p_strokeColor','p_showRuler'].forEach(id=>{const el=$(id);if(!el)return;el.addEventListener('input',()=>renderPreview());el.addEventListener('change',()=>renderPreview())});
     if(els.bgFile)els.bgFile.addEventListener('change',e=>loadBackground(e.target.files[0]));
     if(els.nameFontFile)els.nameFontFile.addEventListener('change',e=>loadFontFile(e.target.files[0],'name'));
@@ -3138,9 +3191,10 @@ if(typeof window!=='undefined'){
         if(sampleOverlayBgColor(p))return;
         state.overlayBg.picking=false;setStatus('Đã hủy ống hút màu.');renderPreview();return;
       }
-      if(hitOverlayResize(p)){
-        const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-resize';state.drag.startX=p.x;state.drag.startY=p.y;state.drag.startOverlayX=o.x;state.drag.startOverlayY=o.y;state.drag.startOverlayW=o.w;state.drag.startOverlayH=o.h;
-        canvas.classList.add('dragging');setStatus('Đang co giãn ảnh dán thêm...');
+      const overlayHandle=hitOverlayHandle(p);
+      if(overlayHandle){
+        const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-resize-'+overlayHandle;state.drag.startX=p.x;state.drag.startY=p.y;state.drag.startOverlayX=o.x;state.drag.startOverlayY=o.y;state.drag.startOverlayW=o.w;state.drag.startOverlayH=o.h;
+        canvas.style.cursor=overlayCursor(overlayHandle);canvas.classList.add('dragging');setStatus('Đang co giãn ảnh dán thêm...');
       }else if(pointInOverlay(p)){
         const o=state.overlay;state.drag.active=true;state.drag.mode='overlay-move';state.drag.offsetX=p.x-o.x;state.drag.offsetY=p.y-o.y;
         canvas.classList.add('dragging');setStatus('Đang di chuyển ảnh dán thêm...');
@@ -3157,15 +3211,8 @@ if(typeof window!=='undefined'){
       const p=canvasMousePos(e);
       if(state.drag.mode==='overlay-move'){
         const o=state.overlay;o.x=clamp(p.x-state.drag.offsetX,-o.w*.85,canvas.width-o.w*.15);o.y=clamp(p.y-state.drag.offsetY,-o.h*.85,canvas.height-o.h*.15);
-      }else if(state.drag.mode==='overlay-resize'){
-        const aspect=Math.max(.001,state.drag.startOverlayW/Math.max(1,state.drag.startOverlayH));
-        let nw=Math.max(24,state.drag.startOverlayW+(p.x-state.drag.startX));
-        let nh=nw/aspect;
-        if(nh<24){nh=24;nw=nh*aspect}
-        const maxW=Math.max(24,canvas.width-state.drag.startOverlayX+canvas.width*.5),maxH=Math.max(24,canvas.height-state.drag.startOverlayY+canvas.height*.5);
-        if(nw>maxW){nw=maxW;nh=nw/aspect}
-        if(nh>maxH){nh=maxH;nw=nh*aspect}
-        state.overlay.w=nw;state.overlay.h=nh;
+      }else if(state.drag.mode.startsWith('overlay-resize-')){
+        resizeOverlayFromHandle(state.drag.mode.replace('overlay-resize-',''),p);
       }else if(state.drag.mode==='move'){
         const newCenter=p.x-state.drag.offsetX,newTop=p.y-state.drag.offsetY;
         if(els.centerXCm)els.centerXCm.value=pxToCm(newCenter).toFixed(2);
@@ -3184,7 +3231,16 @@ if(typeof window!=='undefined'){
       }
       renderPreview();
     });
-    window.addEventListener('mouseup',()=>{if(state.drag.active)setStatus(state.drag.mode.startsWith('overlay-')?'Đã cập nhật vị trí/kích thước ảnh dán thêm.':'Đã cập nhật vị trí/kích thước tên số.');state.drag.active=false;canvas.classList.remove('dragging')});
+    canvas.addEventListener('mousemove',e=>{
+      if(state.drag.active)return;
+      if(state.overlayBg.picking){canvas.style.cursor='crosshair';return;}
+      const p=canvasMousePos(e),h=hitOverlayHandle(p);
+      if(h)canvas.style.cursor=overlayCursor(h);
+      else if(pointInOverlay(p))canvas.style.cursor='move';
+      else canvas.style.cursor='default';
+    });
+    canvas.addEventListener('mouseleave',()=>{if(!state.drag.active)canvas.style.cursor='default'});
+    window.addEventListener('mouseup',()=>{if(state.drag.active)setStatus(state.drag.mode.startsWith('overlay-')?'Đã cập nhật vị trí/kích thước ảnh dán thêm.':'Đã cập nhật vị trí/kích thước tên số.');state.drag.active=false;canvas.classList.remove('dragging');canvas.style.cursor='default'});
     
     function isPreviewMode(){ try{return localStorage.getItem('pip_mainMode')==='preview'}catch(e){return document.body.dataset.mode==='preview'} }
     function interceptTopForPreview(id, handler){
