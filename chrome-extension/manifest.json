@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Image Studio DHL - Local",
-  "version": "2.0.4",
-  "version_name": "2.0.4 • R20.5-COREL-PASTE",
+  "version": "2.0.5",
+  "version_name": "2.0.5 • R20.6-NAMESET-LAYERS",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
