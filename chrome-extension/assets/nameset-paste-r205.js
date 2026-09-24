@@ -16,7 +16,14 @@
     .p-paste-btn:hover{border-color:#6f88b7;background:#202d43}
     .p-paste-status{font-size:11px;color:#8fa3bf;min-height:16px}
     .p-paste-status.ok{color:#86efac}.p-paste-status.err{color:#fca5a5}
-    @media(max-width:700px){.p-paste-head{align-items:flex-start;flex-direction:column}.p-paste-box{padding:10px}}
+    .p-bg-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:10px;padding-top:9px;border-top:1px solid #26364d}
+    .p-bg-label{font-size:11.5px;font-weight:800;color:#dbeafe;margin-right:2px}
+    .p-bg-tools .p-paste-btn.is-active{border-color:#60a5fa;background:#17345c;box-shadow:0 0 0 2px rgba(96,165,250,.12)}
+    .p-bg-chip{width:22px;height:22px;border-radius:6px;border:1px solid #52657f;background:linear-gradient(45deg,#fff 25%,#ddd 25%,#ddd 50%,#fff 50%,#fff 75%,#ddd 75%);background-size:8px 8px}
+    .p-bg-range{display:inline-flex;align-items:center;gap:6px;color:#9fb0c8;font-size:11px;margin-left:3px}
+    .p-bg-range input{width:110px;accent-color:#60a5fa}
+    .p-bg-hint{width:100%;font-size:10.8px;color:#8396b2;line-height:1.4}
+    @media(max-width:700px){.p-paste-head{align-items:flex-start;flex-direction:column}.p-paste-box{padding:10px}.p-bg-range{width:100%}.p-bg-range input{flex:1}}
   `;
   document.head.appendChild(style);
 
@@ -105,6 +112,19 @@
         <button type="button" id="p_clipResetBtn" class="p-paste-btn">Đặt lại vị trí</button>
         <button type="button" id="p_clipClearBtn" class="p-paste-btn">Xóa ảnh dán</button>
         <span id="p_clipPasteStatus" class="p-paste-status">Sẵn sàng nhận ảnh PNG/JPG/WebP từ clipboard.</span>
+      </div>
+      <div class="p-bg-tools">
+        <span class="p-bg-label">Xóa nền ảnh dán:</span>
+        <button type="button" id="p_bgNoneBtn" class="p-paste-btn is-active">Không</button>
+        <button type="button" id="p_bgWhiteBtn" class="p-paste-btn">Trắng</button>
+        <button type="button" id="p_bgBlackBtn" class="p-paste-btn">Đen</button>
+        <button type="button" id="p_bgPickBtn" class="p-paste-btn">Ống hút màu</button>
+        <span id="p_bgColorChip" class="p-bg-chip" title="Màu nền đang chọn"></span>
+        <label class="p-bg-range">Dung sai
+          <input id="p_bgTolerance" type="range" min="0" max="120" step="1" value="36">
+          <b id="p_bgToleranceValue">36</b>
+        </label>
+        <div class="p-bg-hint">Ảnh số thường là nền trắng/chữ đen hoặc nền đen/chữ trắng. Chọn nhanh Trắng/Đen; nếu nền màu khác, bấm <b>Ống hút màu</b> rồi click đúng màu nền trên ảnh dán.</div>
       </div>`;
     field.after(zone);
     zone.addEventListener('click',e=>{if(e.target.closest('button'))return;zone.focus()});
@@ -120,6 +140,15 @@
     $('p_clipToggleBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'toggle'}})));
     $('p_clipResetBtn')?.addEventListener('click',()=>window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'reset'}})));
     $('p_clipClearBtn')?.addEventListener('click',()=>{window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'clear'}}));setMsg('Đã xóa ảnh dán thêm.');});
+    const bgBtns=['p_bgNoneBtn','p_bgWhiteBtn','p_bgBlackBtn','p_bgPickBtn'];
+    const activeBg=id=>bgBtns.forEach(x=>$(x)?.classList.toggle('is-active',x===id));
+    $('p_bgNoneBtn')?.addEventListener('click',()=>{activeBg('p_bgNoneBtn');window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-none'}}));setMsg('Không xóa nền ảnh dán.');});
+    $('p_bgWhiteBtn')?.addEventListener('click',()=>{activeBg('p_bgWhiteBtn');const chip=$('p_bgColorChip');if(chip)chip.style.background='#FFFFFF';window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-white'}}));setMsg('Đang xóa nền trắng. Nếu còn viền, tăng Dung sai.','ok');});
+    $('p_bgBlackBtn')?.addEventListener('click',()=>{activeBg('p_bgBlackBtn');const chip=$('p_bgColorChip');if(chip)chip.style.background='#000000';window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-black'}}));setMsg('Đang xóa nền đen. Nếu còn viền, tăng Dung sai.','ok');});
+    $('p_bgPickBtn')?.addEventListener('click',()=>{activeBg('p_bgPickBtn');window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-pick'}}));setMsg('Ống hút đang bật: click đúng vào màu nền trên ảnh dán.');});
+    $('p_bgTolerance')?.addEventListener('input',e=>{const v=Number(e.target.value)||0;const n=$('p_bgToleranceValue');if(n)n.textContent=String(v);window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-tolerance',value:v}}));});
+    window.addEventListener('nameset:overlayPickedColor',e=>{const color=e.detail?.color||'';const chip=$('p_bgColorChip');if(chip&&color)chip.style.background=color;activeBg('p_bgPickBtn');setMsg(`✓ Đã chích màu nền ${color}. Chỉnh Dung sai nếu cần.`,'ok');});
+    window.addEventListener('nameset:overlayBgReset',()=>{activeBg('p_bgNoneBtn');const chip=$('p_bgColorChip');if(chip)chip.style.background='';});
     document.addEventListener('paste',e=>{
       if(!previewActive()||zone.contains(e.target))return;
       const f=imageFromClipboardData(e.clipboardData);
@@ -133,5 +162,5 @@
     mo.observe(document.documentElement,{childList:true,subtree:true});
     setTimeout(install,600);
   }
-  window.namesetPaste={install,useImageFile,version:'R20.7'};
+  window.namesetPaste={install,useImageFile,version:'R20.8'};
 })();
