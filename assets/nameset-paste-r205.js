@@ -50,6 +50,7 @@
       dt.items.add(named);
       input.files=dt.files;
       input.dispatchEvent(new Event('change',{bubbles:true}));
+      window.dispatchEvent(new CustomEvent('nameset:corelPaste',{detail:{fileName:named.name,source}}));
       setMsg(`✓ Đã nhận ảnh từ ${source}: ${named.name}`,'ok');
       const zone=$('p_clipPasteZone');
       if(zone){zone.classList.remove('is-over');zone.focus({preventScroll:true});}
