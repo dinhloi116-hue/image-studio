@@ -146,7 +146,8 @@
     $('p_bgWhiteBtn')?.addEventListener('click',()=>{activeBg('p_bgWhiteBtn');const chip=$('p_bgColorChip');if(chip)chip.style.background='#FFFFFF';window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-white'}}));setMsg('Đang xóa nền trắng. Nếu còn viền, tăng Dung sai.','ok');});
     $('p_bgBlackBtn')?.addEventListener('click',()=>{activeBg('p_bgBlackBtn');const chip=$('p_bgColorChip');if(chip)chip.style.background='#000000';window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-black'}}));setMsg('Đang xóa nền đen. Nếu còn viền, tăng Dung sai.','ok');});
     $('p_bgPickBtn')?.addEventListener('click',()=>{activeBg('p_bgPickBtn');window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-pick'}}));setMsg('Ống hút đang bật: click đúng vào màu nền trên ảnh dán.');});
-    $('p_bgTolerance')?.addEventListener('input',e=>{const v=Number(e.target.value)||0;const n=$('p_bgToleranceValue');if(n)n.textContent=String(v);window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-tolerance',value:v}}));});
+    $('p_bgTolerance')?.addEventListener('input',e=>{const v=Number(e.target.value)||0;const n=$('p_bgToleranceValue');if(n)n.textContent=String(v);});
+    $('p_bgTolerance')?.addEventListener('change',e=>{const v=Number(e.target.value)||0;window.dispatchEvent(new CustomEvent('nameset:overlayCommand',{detail:{command:'bg-tolerance',value:v}}));setMsg(`Dung sai xóa nền: ${v}.`);});
     window.addEventListener('nameset:overlayPickedColor',e=>{const color=e.detail?.color||'';const chip=$('p_bgColorChip');if(chip&&color)chip.style.background=color;activeBg('p_bgPickBtn');setMsg(`✓ Đã chích màu nền ${color}. Chỉnh Dung sai nếu cần.`,'ok');});
     window.addEventListener('nameset:overlayBgReset',()=>{activeBg('p_bgNoneBtn');const chip=$('p_bgColorChip');if(chip)chip.style.background='';});
     document.addEventListener('paste',e=>{
