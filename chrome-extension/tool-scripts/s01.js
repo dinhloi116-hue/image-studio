@@ -163,7 +163,7 @@ function render(){
  card.querySelector('.remove-one').onclick=()=>{ if(guardBatchMutation('xóa ảnh'))return; stashDeleted([item]); const i=state.items.indexOf(item); if(i>=0) state.items.splice(i,1); render(); setStatus('Đã xóa 1 ảnh • có thể Hoàn tác.'); };
  galleryFrag.appendChild(card); }
  el.gallery.appendChild(galleryFrag);
- updateCounts(); document.body.classList.toggle('has-files', state.items.length > 0);
+ updateCounts(); document.body.classList.toggle('has-files', state.items.length > 0); applyBatchBrightnessPreview();
  }catch(err){
    console.error(err);
    setStatus('Lỗi render: '+(err.message||err));
@@ -1026,6 +1026,83 @@ async function makeAdjustedNewItem(card,item){
   await addBlobAsItem(blob, safeName(baseNameNoExt(item.name)+'_chinh-mau.png'));
 }
 
+
+/* ===== R20.10 batch brightness ===== */
+function batchBrightnessValue(){
+  return clampAdjust(document.getElementById('batchBrightnessRange')?.value||0);
+}
+function batchBrightnessItems(){
+  const scope=document.getElementById('batchBrightnessScope')?.value||'selected';
+  return scope==='all'?state.items:state.items.filter(x=>x.selected);
+}
+function syncBatchBrightnessUI(value,source='range'){
+  const v=clampAdjust(value);
+  const range=document.getElementById('batchBrightnessRange'),num=document.getElementById('batchBrightnessNumber'),label=document.getElementById('batchBrightnessValue');
+  if(range&&source!=='range')range.value=v;
+  if(num&&source!=='number')num.value=v;
+  if(label)label.textContent='Độ sáng: '+(v>0?'+':'')+v;
+  return v;
+}
+function applyBatchBrightnessPreview(){
+  const v=batchBrightnessValue(),targets=new Set(batchBrightnessItems().map(x=>String(x.id)));
+  document.querySelectorAll('#gallery .card').forEach(card=>{
+    const img=card.querySelector('.img-processed');if(!img)return;
+    if(v!==0&&targets.has(String(card.dataset.id))) img.style.filter=adjustFilterString(v,0,0);
+    else img.style.filter='';
+  });
+}
+function resetBatchBrightness(){
+  syncBatchBrightnessUI(0);
+  applyBatchBrightnessPreview();
+  setStatus('Đã đặt chỉnh sáng hàng loạt về 0.');
+}
+async function applyBatchBrightness(){
+  if(batchRunning){setStatus('Đang có một lượt xử lý khác chạy.');return}
+  const v=batchBrightnessValue(),list=batchBrightnessItems();
+  if(!list.length){alert((document.getElementById('batchBrightnessScope')?.value==='selected')?'Chưa có ảnh nào được tick.':'Chưa có ảnh nào.');return}
+  if(v===0){alert('Độ sáng đang là 0. Hãy kéo thanh sang trái/phải trước khi áp dụng.');return}
+  batchRunning=true;batchCancelRequested=false;setBatchBusy(true);setBatchProgress(0,list.length,`Chuẩn bị chỉnh sáng ${list.length} ảnh...`);
+  let done=0,failed=0;
+  try{
+    for(let i=0;i<list.length;i++){
+      if(batchCancelRequested)break;
+      const item=list[i];
+      setBatchProgress(done,list.length,`Đang chỉnh sáng ${i+1}/${list.length}: ${item.name}`);
+      setStatus(`Đang chỉnh sáng ${i+1}/${list.length}: ${item.name}`);
+      try{
+        const blob=await renderAdjustedBlob(item,{brightness:v,contrast:0,saturation:0});
+        if(!blob)throw new Error('Không tạo được ảnh kết quả');
+        if(item.processedUrl)URL.revokeObjectURL(item.processedUrl);
+        item.processedBlob=blob;item.processedUrl=URL.createObjectURL(blob);
+        const img=await loadImage(item.processedUrl);
+        item.processedW=img.naturalWidth;item.processedH=img.naturalHeight;item.processError=null;
+      }catch(err){
+        console.error('Batch brightness:',item.name,err);failed++;
+      }
+      done++;setBatchProgress(done,list.length,`Đã chỉnh ${done}/${list.length}${failed?` • lỗi ${failed}`:''}`);
+      updateCounts();await sleep(20);
+    }
+    syncBatchBrightnessUI(0);render();
+    if(batchCancelRequested){
+      setBatchProgress(done,list.length,`Đã dừng chỉnh sáng • ${done}/${list.length}`);
+      setStatus(`Đã dừng sau ${done}/${list.length} ảnh.`);
+      return;
+    }
+    setBatchProgress(done,list.length,`Hoàn tất chỉnh sáng ${done} ảnh${failed?` • lỗi ${failed}`:''}.`);
+    setStatus(failed?`Đã chỉnh sáng ${done-failed}/${done} ảnh • ${failed} ảnh lỗi.`:`Đã chỉnh sáng hàng loạt ${done} ảnh.`);
+  }finally{
+    batchRunning=false;batchCancelRequested=false;setBatchBusy(false);
+  }
+}
+(function installBatchBrightness(){
+  const range=document.getElementById('batchBrightnessRange'),num=document.getElementById('batchBrightnessNumber'),scope=document.getElementById('batchBrightnessScope'),apply=document.getElementById('batchBrightnessApply'),reset=document.getElementById('batchBrightnessReset');
+  if(range)range.addEventListener('input',()=>{syncBatchBrightnessUI(range.value,'range');applyBatchBrightnessPreview()});
+  if(num){num.addEventListener('input',()=>{syncBatchBrightnessUI(num.value,'number');applyBatchBrightnessPreview()});num.addEventListener('change',()=>{syncBatchBrightnessUI(num.value);applyBatchBrightnessPreview()})}
+  if(scope)scope.addEventListener('change',applyBatchBrightnessPreview);
+  if(apply)apply.addEventListener('click',applyBatchBrightness);
+  if(reset)reset.addEventListener('click',resetBatchBrightness);
+  syncBatchBrightnessUI(0);
+})();
 
 function installMainProcessDelegate(){
   if(!el.gallery || el.gallery.dataset.processDelegateInstalled==='1') return;
