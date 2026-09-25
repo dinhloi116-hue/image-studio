@@ -3491,9 +3491,26 @@ if(typeof window!=='undefined'){
     function updateStats(){ if(els.count) els.count.textContent=`${state.images.length} ảnh`; if(els.done) els.done.textContent=`${state.images.filter(x=>x.doneBlob).length} ảnh đã xử lý`; }
     function fitCanvas(){ els.canvas.style.width=Math.round(els.canvas.width*state.zoom)+'px'; els.canvas.style.height=Math.round(els.canvas.height*state.zoom)+'px'; }
     function currentImage(){ return state.images[state.current]||null; }
+    function ensureImagePosition(item){
+      if(!item) return {x:50,y:50};
+      if(!Number.isFinite(item.wmX)) item.wmX=50;
+      if(!Number.isFinite(item.wmY)) item.wmY=50;
+      return {x:item.wmX,y:item.wmY};
+    }
+    function syncPositionInputsFromCurrent(){
+      const cur=currentImage(); if(!cur) return;
+      const p=ensureImagePosition(cur);
+      if(els.x) els.x.value=p.x.toFixed(1);
+      if(els.y) els.y.value=p.y.toFixed(1);
+    }
+    function saveCurrentPositionFromInputs(){
+      const cur=currentImage(); if(!cur) return;
+      cur.wmX=clamp(n(els.x,50),0,100);
+      cur.wmY=clamp(n(els.y,50),0,100);
+    }
     function pointerPos(evt){ const rect=els.canvas.getBoundingClientRect(); return {x:(evt.clientX-rect.left)*(els.canvas.width/rect.width), y:(evt.clientY-rect.top)*(els.canvas.height/rect.height)}; }
     function loadImageFromFile(file){ return new Promise((resolve,reject)=>{ const url=URL.createObjectURL(file); const img=new Image(); img.onload=()=>resolve({img,url}); img.onerror=()=>{safeRevoke(url);reject(new Error('Không đọc được ảnh'));}; img.src=url; }); }
-    async function handleImages(files){ const arr=[...files||[]]; if(!arr.length) return; const old=state.images||[]; const out=[]; setStatus('Đang nạp ảnh...'); for(const file of arr){ try{ const {img,url}=await loadImageFromFile(file); out.push({name:file.name,file,img,url,doneBlob:null}); }catch(e){} } old.forEach(x=>safeRevoke(x.url)); state.images=out; state.current=0; updateStats(); renderThumbs(); const cur=currentImage(); if(cur){ els.canvas.width=cur.img.naturalWidth; els.canvas.height=cur.img.naturalHeight; fitCanvas(); applyPreset('br'); render(); setStatus(`Đã nạp ${state.images.length} ảnh.`); } else setStatus('Không nạp được ảnh nào.'); }
+    async function handleImages(files){ const arr=[...files||[]]; if(!arr.length) return; const old=state.images||[]; const out=[]; setStatus('Đang nạp ảnh...'); for(const file of arr){ try{ const {img,url}=await loadImageFromFile(file); out.push({name:file.name,file,img,url,doneBlob:null,wmX:50,wmY:50}); }catch(e){} } old.forEach(x=>safeRevoke(x.url)); state.images=out; state.current=0; updateStats(); renderThumbs(); const cur=currentImage(); if(cur){ els.canvas.width=cur.img.naturalWidth; els.canvas.height=cur.img.naturalHeight; fitCanvas(); applyPreset('br'); const p=ensureImagePosition(cur); state.images.forEach((it,idx)=>{ if(idx!==state.current){it.wmX=p.x;it.wmY=p.y;} }); syncPositionInputsFromCurrent(); render(); setStatus(`Đã nạp ${state.images.length} ảnh • mỗi ảnh có vị trí watermark riêng.`); } else setStatus('Không nạp được ảnh nào.'); }
     async function handleLogo(file){ if(!file) return; try{ const {img,url}=await loadImageFromFile(file); safeRevoke(state.logoUrl); state.logoImg=img; state.logoUrl=url; render(); setStatus('Đã nạp logo.'); }catch(e){ setStatus('Không đọc được logo.'); } }
     async function handleFont(file){ if(!file) return; const url=URL.createObjectURL(file); try{ const family='WMFont_'+Date.now()+'_'+Math.floor(Math.random()*9999); const font=new FontFace(family, `url(${url})`); await font.load(); document.fonts.add(font); state.textFont=`'${family}', Arial, sans-serif`; if(els.fontLabel) els.fontLabel.textContent='Đang dùng: '+file.name; render(); setStatus('Đã nạp font chữ.'); }catch(e){ setStatus('Không nạp được font.'); } finally{safeRevoke(url)} }
     function getTextMetrics(txt, size){ ctx.save(); ctx.font=`700 ${size}px ${state.textFont}`; const m=ctx.measureText(txt||' '); const h=(m.actualBoundingBoxAscent||size*.8)+(m.actualBoundingBoxDescent||size*.2); ctx.restore(); return {w:m.width,h,ascent:(m.actualBoundingBoxAscent||size*.8)}; }
@@ -3509,7 +3526,7 @@ if(typeof window!=='undefined'){
       if(type==='horizontal' && hasLogo && hasText){ groupW=logoW+gap+tm.w; groupH=Math.max(logoH, tm.h); }
       else { groupW=Math.max(logoW, tm.w); groupH=(hasLogo?logoH:0)+(hasText?tm.h:0)+gap; }
       if(!hasLogo && !hasText){ groupW=140; groupH=60; }
-      const cx=(n(els.x,50)/100)*img.img.naturalWidth; const cy=(n(els.y,50)/100)*img.img.naturalHeight;
+      const pos=ensureImagePosition(img); const cx=(pos.x/100)*img.img.naturalWidth; const cy=(pos.y/100)*img.img.naturalHeight;
       return {img, type, text, hasLogo, hasText, logoW, logoH, textSize, tm, gap, groupW, groupH, cx, cy, left:cx-groupW/2, top:cy-groupH/2, right:cx+groupW/2, bottom:cy+groupH/2};
     }
     function drawWatermark(targetCtx, layout, guides=true){
@@ -3542,7 +3559,7 @@ if(typeof window!=='undefined'){
       state.images.forEach((it,idx)=>{
         const d=document.createElement('div'); d.className='wm-thumb'+(idx===state.current?' active':'');
         d.innerHTML=`<img src="${it.url}" alt=""><div class="name">${it.name}</div><div class="done">${it.doneBlob?`Đã xử lý • ${Math.round(it.doneBlob.size/1024)} KB`:'Chưa xử lý'}</div>`;
-        d.onclick=()=>{ state.current=idx; renderThumbs(); render(); setStatus('Đang xem: '+it.name); };
+        d.onclick=()=>{ state.current=idx; syncPositionInputsFromCurrent(); renderThumbs(); render(); setStatus('Đang xem: '+it.name+' • vị trí logo của ảnh này được giữ riêng.'); };
         els.thumbs.appendChild(d);
       });
     }
@@ -3557,7 +3574,7 @@ if(typeof window!=='undefined'){
       const left=(margin+L.groupW/2)/w*100, right=(w-margin-L.groupW/2)/w*100, top=(margin+L.groupH/2)/h*100, bottom=(h-margin-L.groupH/2)/h*100;
       if(which==='tl'){x=left;y=top}else if(which==='tc'){x=50;y=top}else if(which==='tr'){x=right;y=top}else if(which==='cl'){x=left;y=50}else if(which==='cc'){x=50;y=50}else if(which==='cr'){x=right;y=50}else if(which==='bl'){x=left;y=bottom}else if(which==='bc'){x=50;y=bottom}else if(which==='br'){x=right;y=bottom}
       else return;
-      els.x.value=x.toFixed(1); els.y.value=y.toFixed(1); render();
+      cur.wmX=clamp(x,0,100); cur.wmY=clamp(y,0,100); syncPositionInputsFromCurrent(); render();
     }
     function resetDefaults(){ els.logoWidth.value=180; els.logoOpacity.value=75; els.textSize.value=42; els.textOpacity.value=88; els.textColor.value='#ffffff'; els.textStroke.value=2; els.strokeColor.value='#000000'; els.rotation.value=0; els.gap.value=14; els.margin.value=24; els.layout.value='vertical'; els.textAlign.value='center'; if(currentImage()) applyPreset('br'); render(); setStatus('Đã đặt lại thông số watermark.'); }
     async function processOne(item){
@@ -3590,6 +3607,7 @@ if(typeof window!=='undefined'){
       try{
         for(let i=0;i<state.images.length;i++){
           state.current=i;
+          syncPositionInputsFromCurrent();
           renderThumbs();
           render();
           setStatus(`Đang xử lý ${i+1}/${state.images.length}: ${state.images[i].name}`);
@@ -3614,7 +3632,8 @@ if(typeof window!=='undefined'){
     if(els.images) els.images.addEventListener('change',e=>handleImages(e.target.files));
     if(els.logoFile) els.logoFile.addEventListener('change',e=>handleLogo(e.target.files[0]));
     if(els.fontFile) els.fontFile.addEventListener('change',e=>handleFont(e.target.files[0]));
-    ['logoWidth','logoOpacity','text','textSize','textOpacity','textColor','textStroke','strokeColor','textAlign','rotation','gap','x','y','margin','layout'].forEach(k=>{ const el=els[k]; if(el){ el.addEventListener('input', render); el.addEventListener('change', render); } });
+    ['logoWidth','logoOpacity','text','textSize','textOpacity','textColor','textStroke','strokeColor','textAlign','rotation','gap','margin','layout'].forEach(k=>{ const el=els[k]; if(el){ el.addEventListener('input', render); el.addEventListener('change', render); } });
+    ['x','y'].forEach(k=>{ const el=els[k]; if(el){ const update=()=>{saveCurrentPositionFromInputs();render();}; el.addEventListener('input',update);el.addEventListener('change',update); } });
     if(els.applyPreset) els.applyPreset.onclick=()=>applyPreset(els.presetPos.value);
     if(els.reset) els.reset.onclick=()=>resetDefaults();
     if(els.processAll) els.processAll.onclick=()=>processAll();
@@ -3623,8 +3642,8 @@ if(typeof window!=='undefined'){
     if(els.zoomOut) els.zoomOut.onclick=()=>{ state.zoom=clamp(state.zoom-0.1,0.2,4); fitCanvas(); };
     if(els.zoomReset) els.zoomReset.onclick=()=>{ state.zoom=1; fitCanvas(); };
     els.canvas.addEventListener('mousedown',e=>{ const L=getGroupLayout(); if(!L) return; const p=pointerPos(e); if(hitResize(p,L)){ state.drag.active=true; state.drag.mode='resize'; state.drag.startDist=Math.hypot(p.x-L.cx,p.y-L.cy); state.drag.startLogoW=n(els.logoWidth,180); state.drag.startTextSize=n(els.textSize,42); state.drag.startGap=n(els.gap,14); els.canvas.classList.add('dragging'); setStatus('Đang đổi kích thước watermark...'); } else if(hitBody(p,L)){ state.drag.active=true; state.drag.mode='move'; state.drag.offX=p.x-L.cx; state.drag.offY=p.y-L.cy; els.canvas.classList.add('dragging'); setStatus('Đang di chuyển watermark...'); } });
-    window.addEventListener('mousemove',e=>{ if(!state.drag.active) return; const L=getGroupLayout(); if(!L) return; const p=pointerPos(e); if(state.drag.mode==='move'){ const cur=currentImage(); const nx=(p.x-state.drag.offX)/cur.img.naturalWidth*100; const ny=(p.y-state.drag.offY)/cur.img.naturalHeight*100; els.x.value=clamp(nx,0,100).toFixed(1); els.y.value=clamp(ny,0,100).toFixed(1); } else if(state.drag.mode==='resize'){ const dist=Math.hypot(p.x-L.cx,p.y-L.cy); const scale=clamp(dist/Math.max(20,state.drag.startDist),0.15,5); els.logoWidth.value=Math.round(state.drag.startLogoW*scale); els.textSize.value=Math.max(8,Math.round(state.drag.startTextSize*scale)); els.gap.value=Math.max(0,Math.round(state.drag.startGap*scale)); } render(); });
-    window.addEventListener('mouseup',()=>{ if(state.drag.active){ state.drag.active=false; els.canvas.classList.remove('dragging'); setStatus('Đã cập nhật watermark.'); } });
+    window.addEventListener('mousemove',e=>{ if(!state.drag.active) return; const L=getGroupLayout(); if(!L) return; const p=pointerPos(e); if(state.drag.mode==='move'){ const cur=currentImage(); const nx=clamp((p.x-state.drag.offX)/cur.img.naturalWidth*100,0,100); const ny=clamp((p.y-state.drag.offY)/cur.img.naturalHeight*100,0,100); cur.wmX=nx;cur.wmY=ny;els.x.value=nx.toFixed(1);els.y.value=ny.toFixed(1); } else if(state.drag.mode==='resize'){ const dist=Math.hypot(p.x-L.cx,p.y-L.cy); const scale=clamp(dist/Math.max(20,state.drag.startDist),0.15,5); els.logoWidth.value=Math.round(state.drag.startLogoW*scale); els.textSize.value=Math.max(8,Math.round(state.drag.startTextSize*scale)); els.gap.value=Math.max(0,Math.round(state.drag.startGap*scale)); } render(); });
+    window.addEventListener('mouseup',()=>{ if(state.drag.active){ state.drag.active=false; els.canvas.classList.remove('dragging'); const cur=currentImage(); setStatus('Đã cập nhật vị trí/kích thước trên '+(cur?cur.name:'ảnh hiện tại')+' • không ảnh hưởng ảnh khác.'); } });
     
     function isLogoMode(){ try{return localStorage.getItem('pip_mainMode')==='logo'}catch(e){return document.body.dataset.mode==='logo'} }
     function clearLogoImages(){
