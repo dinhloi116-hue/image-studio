@@ -521,7 +521,22 @@ body.batch-busy .batch-progress{border-color:#60a5fa;box-shadow:0 0 0 2px rgba(9
 #presetStatus{margin-top:9px;font-size:12px;color:#93c5fd;min-height:17px}
 
 
-/* ===== UX R3: batch selection + clipboard paste ===== */
+/* ===== R20.10: batch brightness adjustment ===== */
+.batch-brightness-card{background:linear-gradient(180deg,#101b2d,#0b1422);border:1px solid #35547a;border-radius:14px;padding:12px;margin:10px 0}
+.batch-brightness-card h2{margin:0 0 6px;font-size:16px;color:#eef6ff}
+.batch-brightness-card .bb-sub{margin:0 0 10px;color:#9fb3cf;font-size:12px;line-height:1.45}
+.bb-row{display:grid;grid-template-columns:1fr 82px;gap:8px;align-items:center}
+.bb-row input[type="range"]{width:100%;accent-color:#60a5fa}
+.bb-number{width:100%;background:#071225;color:#e9f1ff;border:1px solid #32517c;border-radius:10px;padding:8px;text-align:center;font-weight:800}
+.bb-meta{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-top:9px}
+.bb-value{font-size:12px;color:#bfdbfe;font-weight:900}
+.bb-scope{background:#071225;color:#e9f1ff;border:1px solid #32517c;border-radius:10px;padding:8px 10px}
+.bb-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.bb-actions .btn{flex:1;min-width:120px}
+.bb-preview-note{margin-top:8px;font-size:11px;color:#8ea4c0;line-height:1.4}
+body.batch-busy #batchBrightnessApply{opacity:.6;pointer-events:none}
+
+ /* ===== UX R3: batch selection + clipboard paste ===== */
 .batch-select-strip{display:flex;gap:7px;align-items:center;flex-wrap:wrap;padding:9px 12px;background:#0b1220;border:1px solid #2b3b52;border-radius:12px}
 .batch-select-strip .btn{padding:6px 9px;font-size:12px}.selected-count{margin-left:auto;color:#93c5fd;font-size:12px;font-weight:800}
 .clipboard-hint{font-size:12px;color:#aebfd8;padding:7px 10px;border:1px dashed #334155;border-radius:10px;background:#09111e}
@@ -971,6 +986,26 @@ label:has(#renameZipName), .field:has(#rn_zipName), .field:has(#wm_zipName){disp
         </div>
       </section>
 <section class="preset-card"><h2>⚡ Preset 1 chạm</h2><p>Chọn theo loại ảnh, tool tự điền các thông số chính. Sau đó vẫn có thể chỉnh tay.</p><div class="smart-presets"><button type="button" class="btn preset-btn" data-work-preset="clean"><b>Nền sạch</b><small>Ảnh/logo thông thường</small></button><button type="button" class="btn preset-btn" data-work-preset="detail"><b>Giữ nét mảnh</b><small>Chữ ký, nét nhỏ</small></button><button type="button" class="btn preset-btn" data-work-preset="hard"><b>Nền khó / loang</b><small>Xóa mạnh hơn</small></button><button type="button" class="btn preset-btn" data-work-preset="shopee"><b>Shopee 2K</b><small>2000×2000 • ≤2MB</small></button></div><div id="presetStatus">Chưa chọn preset.</div></section>
+<section class="batch-brightness-card">
+        <h2>☀ Chỉnh sáng hàng loạt</h2>
+        <p class="bb-sub">Kéo thanh để xem trước ngay trên toàn bộ ảnh theo phạm vi đã chọn. Chỉ khi bấm <b>Áp dụng</b> thì ảnh kết quả mới được thay đổi.</p>
+        <div class="bb-row">
+          <input id="batchBrightnessRange" type="range" min="-100" max="100" step="1" value="0" aria-label="Độ sáng hàng loạt" />
+          <input id="batchBrightnessNumber" class="bb-number" type="number" min="-100" max="100" step="1" value="0" aria-label="Giá trị độ sáng" />
+        </div>
+        <div class="bb-meta">
+          <span id="batchBrightnessValue" class="bb-value">Độ sáng: 0</span>
+          <select id="batchBrightnessScope" class="bb-scope">
+            <option value="selected">Ảnh đang tick</option>
+            <option value="all">Tất cả ảnh</option>
+          </select>
+        </div>
+        <div class="bb-actions">
+          <button type="button" id="batchBrightnessApply" class="btn success">Áp dụng hàng loạt</button>
+          <button type="button" id="batchBrightnessReset" class="btn secondary">Đặt lại về 0</button>
+        </div>
+        <div class="bb-preview-note">Giá trị dương = sáng hơn • âm = tối hơn • giữ nguyên nền trong suốt nếu ảnh đã xóa nền.</div>
+      </section>
 <section class="main-options">
         <h2>Tùy chọn chính</h2><div class="field-tip" style="margin:-2px 0 8px">Xử lý nhanh sẽ <b>giữ nguyên</b> các lựa chọn bên dưới, không tự bật/tắt tính năng.</div>
 
@@ -1825,7 +1860,7 @@ function render(){
  card.querySelector('.remove-one').onclick=()=>{ if(guardBatchMutation('xóa ảnh'))return; stashDeleted([item]); const i=state.items.indexOf(item); if(i>=0) state.items.splice(i,1); render(); setStatus('Đã xóa 1 ảnh • có thể Hoàn tác.'); };
  galleryFrag.appendChild(card); }
  el.gallery.appendChild(galleryFrag);
- updateCounts(); document.body.classList.toggle('has-files', state.items.length > 0);
+ updateCounts(); document.body.classList.toggle('has-files', state.items.length > 0); applyBatchBrightnessPreview();
  }catch(err){
    console.error(err);
    setStatus('Lỗi render: '+(err.message||err));
@@ -2688,6 +2723,83 @@ async function makeAdjustedNewItem(card,item){
   await addBlobAsItem(blob, safeName(baseNameNoExt(item.name)+'_chinh-mau.png'));
 }
 
+
+/* ===== R20.10 batch brightness ===== */
+function batchBrightnessValue(){
+  return clampAdjust(document.getElementById('batchBrightnessRange')?.value||0);
+}
+function batchBrightnessItems(){
+  const scope=document.getElementById('batchBrightnessScope')?.value||'selected';
+  return scope==='all'?state.items:state.items.filter(x=>x.selected);
+}
+function syncBatchBrightnessUI(value,source='range'){
+  const v=clampAdjust(value);
+  const range=document.getElementById('batchBrightnessRange'),num=document.getElementById('batchBrightnessNumber'),label=document.getElementById('batchBrightnessValue');
+  if(range&&source!=='range')range.value=v;
+  if(num&&source!=='number')num.value=v;
+  if(label)label.textContent='Độ sáng: '+(v>0?'+':'')+v;
+  return v;
+}
+function applyBatchBrightnessPreview(){
+  const v=batchBrightnessValue(),targets=new Set(batchBrightnessItems().map(x=>String(x.id)));
+  document.querySelectorAll('#gallery .card').forEach(card=>{
+    const img=card.querySelector('.img-processed');if(!img)return;
+    if(v!==0&&targets.has(String(card.dataset.id))) img.style.filter=adjustFilterString(v,0,0);
+    else img.style.filter='';
+  });
+}
+function resetBatchBrightness(){
+  syncBatchBrightnessUI(0);
+  applyBatchBrightnessPreview();
+  setStatus('Đã đặt chỉnh sáng hàng loạt về 0.');
+}
+async function applyBatchBrightness(){
+  if(batchRunning){setStatus('Đang có một lượt xử lý khác chạy.');return}
+  const v=batchBrightnessValue(),list=batchBrightnessItems();
+  if(!list.length){alert((document.getElementById('batchBrightnessScope')?.value==='selected')?'Chưa có ảnh nào được tick.':'Chưa có ảnh nào.');return}
+  if(v===0){alert('Độ sáng đang là 0. Hãy kéo thanh sang trái/phải trước khi áp dụng.');return}
+  batchRunning=true;batchCancelRequested=false;setBatchBusy(true);setBatchProgress(0,list.length,`Chuẩn bị chỉnh sáng ${list.length} ảnh...`);
+  let done=0,failed=0;
+  try{
+    for(let i=0;i<list.length;i++){
+      if(batchCancelRequested)break;
+      const item=list[i];
+      setBatchProgress(done,list.length,`Đang chỉnh sáng ${i+1}/${list.length}: ${item.name}`);
+      setStatus(`Đang chỉnh sáng ${i+1}/${list.length}: ${item.name}`);
+      try{
+        const blob=await renderAdjustedBlob(item,{brightness:v,contrast:0,saturation:0});
+        if(!blob)throw new Error('Không tạo được ảnh kết quả');
+        if(item.processedUrl)URL.revokeObjectURL(item.processedUrl);
+        item.processedBlob=blob;item.processedUrl=URL.createObjectURL(blob);
+        const img=await loadImage(item.processedUrl);
+        item.processedW=img.naturalWidth;item.processedH=img.naturalHeight;item.processError=null;
+      }catch(err){
+        console.error('Batch brightness:',item.name,err);failed++;
+      }
+      done++;setBatchProgress(done,list.length,`Đã chỉnh ${done}/${list.length}${failed?` • lỗi ${failed}`:''}`);
+      updateCounts();await sleep(20);
+    }
+    syncBatchBrightnessUI(0);render();
+    if(batchCancelRequested){
+      setBatchProgress(done,list.length,`Đã dừng chỉnh sáng • ${done}/${list.length}`);
+      setStatus(`Đã dừng sau ${done}/${list.length} ảnh.`);
+      return;
+    }
+    setBatchProgress(done,list.length,`Hoàn tất chỉnh sáng ${done} ảnh${failed?` • lỗi ${failed}`:''}.`);
+    setStatus(failed?`Đã chỉnh sáng ${done-failed}/${done} ảnh • ${failed} ảnh lỗi.`:`Đã chỉnh sáng hàng loạt ${done} ảnh.`);
+  }finally{
+    batchRunning=false;batchCancelRequested=false;setBatchBusy(false);
+  }
+}
+(function installBatchBrightness(){
+  const range=document.getElementById('batchBrightnessRange'),num=document.getElementById('batchBrightnessNumber'),scope=document.getElementById('batchBrightnessScope'),apply=document.getElementById('batchBrightnessApply'),reset=document.getElementById('batchBrightnessReset');
+  if(range)range.addEventListener('input',()=>{syncBatchBrightnessUI(range.value,'range');applyBatchBrightnessPreview()});
+  if(num){num.addEventListener('input',()=>{syncBatchBrightnessUI(num.value,'number');applyBatchBrightnessPreview()});num.addEventListener('change',()=>{syncBatchBrightnessUI(num.value);applyBatchBrightnessPreview()})}
+  if(scope)scope.addEventListener('change',applyBatchBrightnessPreview);
+  if(apply)apply.addEventListener('click',applyBatchBrightness);
+  if(reset)reset.addEventListener('click',resetBatchBrightness);
+  syncBatchBrightnessUI(0);
+})();
 
 function installMainProcessDelegate(){
   if(!el.gallery || el.gallery.dataset.processDelegateInstalled==='1') return;
