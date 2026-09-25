@@ -1,6 +1,6 @@
 IMAGE STUDIO DHL - LOCAL EXTENSION
 ==================================
-Tool version: R20.10-BATCH-BRIGHTNESS
+Tool version: R20.11-WATERMARK-PER-IMAGE
 
 CÀI LẦN ĐẦU BẰNG GITHUB DESKTOP
 1. GitHub Desktop -> Clone repository: dinhloi116-hue/image-studio
