@@ -16,9 +16,13 @@
     '.dhl-size-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}' +
     '.dhl-size-field{display:flex;flex-direction:column;gap:5px;font-size:12px;font-weight:650;color:#d6e6f8}' +
     '.dhl-size-field input,.dhl-size-field select{width:100%;min-width:0;box-sizing:border-box;border:1px solid #496182;background:#14253c;color:#fff;border-radius:8px;padding:10px;font-size:14px;opacity:1}' +
+    '.dhl-size-field[hidden]{display:none!important}' +
     '.dhl-size-field input:focus,.dhl-size-field select:focus{outline:2px solid #38bdf8;outline-offset:1px}' +
     '.dhl-size-wide{grid-column:1/-1}.dhl-size-check{display:flex;align-items:center;gap:8px;font-size:12px;color:#e0eafa}' +
     '.dhl-size-check input{accent-color:#38bdf8;width:16px;height:16px}.dhl-size-muted{font-size:12px;color:#b7cadf;line-height:1.5}' +
+    'body.dhl-size-on #r17ActiveSummary,body.dhl-size-on #r19ContextCard{display:none!important}' +
+    'body.dhl-size-on .r17-goal-grid,body.dhl-size-on .r17-manual,body.dhl-size-on .r17-output,body.dhl-size-on .r17-crop-simple{opacity:.5;pointer-events:none}' +
+    '.dhl-size-warning{margin-top:7px;color:#fde68a;font-weight:700;font-size:12px}' +
     '#dhlResizeSection.dhl-size-active{border-color:#38bdf8;box-shadow:0 0 0 1px #38bdf855}' +
     '@media(max-width:380px){.dhl-size-grid{grid-template-columns:1fr}}';
   document.head.appendChild(css);
@@ -43,7 +47,7 @@
       '<label class="dhl-size-field">Giới hạn dung lượng (MB)<input type="number" id="dhlResizeMB" min="0" max="100" step="0.1" value="2" title="0 = không giới hạn"></label>',
       '<label class="dhl-size-field">Định dạng file<select id="dhlResizeFormat"><option value="auto">Theo định dạng gốc</option><option value="jpeg">JPG — nhẹ hơn</option><option value="webp">WebP — nén tốt</option><option value="png">PNG — giữ trong suốt</option></select></label>',
       '<label class="dhl-size-field dhl-size-wide">Chất lượng JPG/WebP (%)<input type="number" id="dhlResizeQuality" min="35" max="100" step="1" value="85"></label>',
-      '<div class="dhl-size-muted dhl-size-wide" id="dhlResizeInfo">0 MB = không giới hạn. Nếu khó đạt mức MB, tool sẽ giảm chất lượng rồi mới giảm độ phân giải và thông báo nếu chưa đạt.</div>',
+      '<div class="dhl-size-muted dhl-size-wide" id="dhlResizeInfo">0 MB = không giới hạn. JPG sẽ dùng nền trắng khi ảnh gốc trong suốt. Nếu khó đạt mức MB, tool sẽ giảm chất lượng rồi mới giảm độ phân giải và thông báo nếu chưa đạt.</div>',
       '</div></div>'
     ].join('');
     if(target.id==='r17ActiveSummary')target.insertAdjacentElement('beforebegin',sec);
@@ -53,6 +57,7 @@
     function update(){
       $('dhlResizeOptions').hidden=!enabled();
       sec.classList.toggle('dhl-size-active',enabled());
+      document.body.classList.toggle('dhl-size-on',enabled());
       var custom=$('dhlResizeMode').value==='custom';
       $('dhlResizeWidthWrap').hidden=!custom;
       $('dhlResizeHeightWrap').hidden=!custom;
@@ -172,6 +177,21 @@
       if(!item||!item.__dhlResizeOnly||!item.processedBlob)return name;
       var ext={'image/jpeg':'jpg','image/webp':'webp','image/png':'png'}[item.processedBlob.type]||'png';
       return name.replace(/\.[^.]+$/,'.'+ext);
+    };
+  }
+  if(typeof window.render==='function'){
+    var existingRender=window.render;
+    window.render=function(){
+      var result=existingRender.apply(this,arguments);
+      try{
+        state.items.forEach(function(item){
+          if(!item.__dhlResizeWarning)return;
+          var card=[].slice.call(document.querySelectorAll('#gallery [data-id]')).find(function(n){return n.dataset.id===item.id;});
+          var meta=card&&card.querySelector('.meta');
+          if(meta){var note=document.createElement('div');note.className='dhl-size-warning';note.textContent='⚠ '+item.__dhlResizeWarning;meta.appendChild(note);}
+        });
+      }catch(e){console.warn('Image sizing info:',e);}
+      return result;
     };
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);
