@@ -10,6 +10,7 @@ on:
       - 'assets/video-compressor-core-r199.js'
       - 'assets/nameset-paste-r205.js'
       - 'assets/nameset-layer-toggle-r206.js'
+      - 'assets/image-sizing-r207.js'
       - 'assets/halftone-help-r203.js'
       - 'assets/halftone-zoom-r202.js'
       - 'assets/halftone-r200.js'
@@ -64,6 +65,8 @@ jobs:
                   src=srcm.group(1)
                   if 'video-compressor-r199.js' in src:
                       return '<script src="assets/video-compressor-r199.js"></script>'
+                  if 'image-sizing-r207.js' in src:
+                      return '<script src="assets/image-sizing-r207.js"></script>'
                   return m.group(0)
               if typ and typ not in ('text/javascript','application/javascript','module'):
                   return m.group(0)
@@ -81,7 +84,7 @@ jobs:
           (ext/'tool.html').write_text(html,encoding='utf-8')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
-          for name in ['video-compressor-r199.js','video-compressor-core-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js']:
+          for name in ['video-compressor-r199.js','video-compressor-core-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js','image-sizing-r207.js']:
               shutil.copy2(root/'assets'/name, assets/name)
 
           vp=assets/'video-compressor-r199.js'
