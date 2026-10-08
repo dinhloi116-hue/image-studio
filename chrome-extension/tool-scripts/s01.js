@@ -697,7 +697,7 @@ async function processList(list,quick=false){
     for(let i=0;i<list.length;i++){
       if(batchCancelRequested) break; const item=list[i];
       setBatchProgress(done,list.length,`Đang xử lý ${i+1}/${list.length}: ${item.name}`); setStatus(`Đang xử lý ${i+1}/${list.length}: ${item.name}`); await sleep(50);
-      if(batchCancelRequested) break; if(quick && settings().removeBg && !item.scannedColors.length) await autoScanCorners(item); if(batchCancelRequested) break;
+      if(batchCancelRequested) break; if(quick && !window.__DHL_RESIZE_ONLY__?.() && settings().removeBg && !item.scannedColors.length) await autoScanCorners(item); if(batchCancelRequested) break;
       const ok=await processItem(item); done++; if(!ok) failed++; updateCounts(); render();
       setBatchProgress(done,list.length,`Đã xong ${done}/${list.length}${failed?` • lỗi ${failed}`:''}`); await sleep(35);
     }
