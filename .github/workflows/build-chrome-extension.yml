@@ -6,9 +6,14 @@ on:
     paths:
       - 'chrome-extension/**'
       - '.github/workflows/build-chrome-extension.yml'
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: image-studio-chrome-package-main
+  cancel-in-progress: true
 
 jobs:
   build:
@@ -24,6 +29,21 @@ jobs:
           python -m json.tool chrome-extension/update.json >/dev/null
           node --check chrome-extension/popup.js
           node --check chrome-extension/app.js
+          node --check chrome-extension/batch-editor.js
+          test -s chrome-extension/batch-editor.html
+          test -s chrome-extension/tool.html
+          python3 - <<'PY'
+          import json,struct
+          from pathlib import Path
+          m=json.loads(Path('chrome-extension/manifest.json').read_text())
+          for size in (16,32,48,128):
+              f=Path(f'chrome-extension/icons/icon{size}.png')
+              raw=f.read_bytes()
+              assert raw[:8]==b'\x89PNG\r\n\x1a\n',f
+              assert struct.unpack('>II',raw[16:24])==(size,size),f
+              assert m['icons'][str(size)]==f'icons/icon{size}.png'
+          print('Verified extension icons, manifest and batch tool')
+          PY
           grep -q '"manifest_version": 3' chrome-extension/manifest.json
 
       - name: Build ZIP
@@ -51,4 +71,14 @@ jobs:
             exit 0
           fi
           git commit -m 'Build latest Chrome extension ZIP'
-          git push
+          for attempt in 1 2 3; do
+            git pull --rebase origin main
+            if git push origin HEAD:main; then
+              echo 'Published up-to-date installable ZIP.'
+              exit 0
+            fi
+            echo "Push failed, retry $attempt"
+            sleep 3
+          done
+          echo 'ZIP publish failed after retries' >&2
+          exit 1
