@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Image Studio DHL - Local",
   "version": "2.0.7",
-  "version_name": "2.0.7 • R20.12-IMAGE-RESIZE-BATCH",
+  "version_name": "2.0.7 • R20.13-BATCH-PHOTO-WATERMARK",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
