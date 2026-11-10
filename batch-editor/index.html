@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#101827">
+<title>Chỉnh ảnh hàng loạt | Image Studio DHL</title>
+<style>
+:root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.48 system-ui,-apple-system,"Segoe UI",Arial,sans-serif}
+button,input,select{font:inherit}
+button,select,input[type=range],input[type=text],input[type=file]{touch-action:manipulation}
+button,.btn,.pick{border:1px solid var(--line);background:#1b2b42;color:var(--ink);border-radius:11px;padding:10px 13px;cursor:pointer;text-decoration:none;display:inline-flex;justify-content:center;align-items:center;gap:7px;font-weight:650;min-height:42px}
+button:hover,.btn:hover,.pick:hover{border-color:#6ca9ff}
+button:disabled{opacity:.45;cursor:not-allowed}
+button.primary,.pick{background:#2563eb;border-color:#3b82f6;color:white}
+button.export{background:#15803d;border-color:#22c55e;color:white;font-weight:800}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:15px clamp(12px,3vw,28px);background:#101a2a;border-bottom:1px solid var(--line)}
+.top h1{font-size:clamp(19px,2vw,27px);margin:0}
+.top p{margin:2px 0 0;color:var(--muted);font-size:12px}
+.shell{max-width:1480px;margin:0 auto;padding:16px;display:grid;gap:14px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:17px;padding:16px;min-width:0}
+.pickrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.pickrow p{color:var(--muted);margin:0;flex:1;min-width:200px}
+#selectFiles{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+#dropZone{border:2px dashed #365478}
+#dropZone.drag{background:#1b3558;border-color:#60a5fa}
+.count{margin-left:auto;border-radius:20px;padding:5px 13px;background:#0e2746;color:#b9d9ff;font-weight:800}
+.workspace{display:grid;grid-template-columns:minmax(300px,390px) minmax(0,1fr);gap:14px;align-items:start}
+.controls{grid-column:1;grid-row:1;display:grid;gap:15px}
+.previewPanel{grid-column:2;grid-row:1;position:sticky;top:14px;display:grid;gap:13px}
+h2{font-size:16px;margin:0 0 9px}
+fieldset{padding:0;border:0;margin:0;min-width:0}
+.group{border-top:1px solid var(--line);padding-top:13px}
+.presetRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+.presetRow button{padding:9px 5px;font-size:12px}
+.helper{font-size:12px;color:var(--muted);margin:8px 0 0}
+.range{display:grid;gap:4px;margin:12px 0}
+.range>div{display:flex;justify-content:space-between;gap:8px}
+.range output{color:#93c5fd;font-weight:750;font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:#60a5fa;height:24px}
+input[type=text],select{width:100%;min-height:42px;border-radius:10px;padding:9px 11px;color:var(--ink);background:#101827;border:1px solid #40516a}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.fields label{display:grid;gap:6px;font-size:13px;color:var(--muted);min-width:0}
+.full{grid-column:1/-1}
+details summary{font-weight:700;cursor:pointer;padding:4px 0;list-style-position:inside}
+details[open] summary{margin-bottom:12px}
+.previewTop{display:flex;justify-content:space-between;align-items:center;gap:7px;flex-wrap:wrap}
+.previewTop .info{min-width:0;flex:1}
+.previewTop strong{display:block;word-break:break-word;font-size:14px}
+.previewTop small{color:var(--muted)}
+.stepper{display:flex;align-items:center;gap:6px}
+.stepper button{min-width:42px;padding:7px}
+.canvasBox{background:#0a101b;border-radius:13px;min-height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--line);
+background-image:linear-gradient(45deg,#162237 25%,transparent 25%),linear-gradient(-45deg,#162237 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#162237 75%),linear-gradient(-45deg,transparent 75%,#162237 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
+#preview{display:block;max-width:100%;max-height:min(65vh,760px);width:auto;height:auto;object-fit:contain}
+#fileSelect{max-width:100%}
+.exportArea{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:14px}
+.actionRow{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.actionRow .export{flex:1;min-width:190px}
+progress{width:100%;height:12px;accent-color:var(--green)}
+#status{font-size:13px;color:#bcdaf9;margin:0;min-height:22px}
+#status.error{color:#fda4af}
+#failures{white-space:pre-wrap;max-height:180px;overflow:auto;font-size:12px;color:#fca5a5}
+.privacy{font-size:12px;color:#99b2ce;line-height:1.55}
+.mobile-bottom{display:none}
+@media(max-width:850px){.workspace{grid-template-columns:1fr}.controls{grid-column:1;grid-row:2}.previewPanel{grid-column:1;grid-row:1;position:static}.canvasBox{min-height:200px}#preview{max-height:38vh}.top{padding:12px}.shell{padding:10px;gap:10px}.panel{padding:13px}.mobile-bottom{display:block}}
+@media(max-width:400px){.presetRow button{font-size:11px}.fields{grid-template-columns:1fr 1fr}.actionRow .export{width:100%}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL • Chỉnh 1 lần → áp dụng toàn bộ</p></div>
+  <button id="goBack" type="button">← Về Image Studio</button>
+</header>
+<main class="shell">
+  <section id="dropZone" class="panel">
+    <div class="pickrow">
+      <label for="selectFiles" class="pick">＋ Chọn nhiều ảnh</label>
+      <input id="selectFiles" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple>
+      <p>Chọn 50–100 ảnh trên điện thoại hoặc máy tính. Hỗ trợ JPG / PNG / WebP, kéo thả từ máy tính.</p>
+      <span id="count" class="count">0 ảnh</span>
+    </div>
+  </section>
+  <div class="workspace">
+    <section class="panel previewPanel">
+      <div class="previewTop">
+        <div class="info"><strong id="fileName">Chưa chọn ảnh</strong><small id="previewNote">Chọn ảnh để xem trước</small></div>
+        <div class="stepper"><button id="previous" type="button" aria-label="Ảnh trước" disabled>‹</button><span id="position">0 / 0</span><button id="next" type="button" aria-label="Ảnh sau" disabled>›</button></div>
+      </div>
+      <div class="canvasBox"><canvas id="preview" width="1" height="1" aria-label="Xem trước ảnh đã chỉnh"></canvas></div>
+      <select id="fileSelect" aria-label="Chọn ảnh để xem trước" disabled></select>
+      <div class="exportArea">
+        <div class="actionRow">
+          <button id="download" class="export" type="button" disabled>↓ Xuất tất cả thành ZIP</button>
+          <button id="cancel" type="button" hidden>Hủy</button>
+          <button id="clear" type="button" disabled>Xóa danh sách</button>
+        </div>
+        <progress id="progress" value="0" max="100"></progress>
+        <p id="status" aria-live="polite">Ảnh chỉ được xử lý trên thiết bị của bạn, không tải lên máy chủ.</p>
+        <div id="failures" role="status"></div>
+      </div>
+    </section>
+    <aside class="panel controls" aria-label="Bảng chỉnh ảnh hàng loạt">
+      <div>
+        <h2>1. Chỉnh màu và độ nét</h2>
+        <div class="presetRow">
+          <button type="button" data-preset="neutral">Nguyên bản</button>
+          <button type="button" data-preset="shop">Sáng bán hàng</button>
+          <button type="button" data-preset="vivid">Rực và rõ</button>
+        </div>
+        <p class="helper">Chọn nhanh một kiểu hoặc kéo từng thanh. Xem kết quả tức thì ở ảnh bên cạnh.</p>
+        <div class="range"><div><label for="exposure">Phơi sáng</label><output id="exposureValue"></output></div><input id="exposure" type="range" min="-150" max="150" step="1" value="14"></div>
+        <div class="range"><div><label for="brightness">Độ sáng</label><output id="brightnessValue"></output></div><input id="brightness" type="range" min="-100" max="100" step="1" value="8"></div>
+        <div class="range"><div><label for="contrast">Tương phản</label><output id="contrastValue"></output></div><input id="contrast" type="range" min="-100" max="100" step="1" value="8"></div>
+        <div class="range"><div><label for="vibrance">Độ rực màu</label><output id="vibranceValue"></output></div><input id="vibrance" type="range" min="-100" max="100" step="1" value="18"></div>
+        <div class="range"><div><label for="sharpness">Độ sắc nét</label><output id="sharpnessValue"></output></div><input id="sharpness" type="range" min="0" max="100" step="1" value="26"></div>
+      </div>
+      <div class="group">
+        <h2>2. Dấu chìm bảo vệ</h2>
+        <div class="fields">
+          <label class="full" for="wmText">Nội dung dấu chìm<input id="wmText" type="text" maxlength="80" value="DHL SPORTS" placeholder="Ví dụ: ao in top 2"></label>
+          <label for="wmMode">Cách chèn<select id="wmMode"><option value="tile">Lặp chéo toàn ảnh</option><option value="center">Một dấu ở giữa</option><option value="none">Không chèn</option></select></label>
+          <label for="wmColor">Màu chữ<select id="wmColor"><option value="#334155">Xám đậm</option><option value="#ffffff">Trắng</option><option value="#000000">Đen</option></select></label>
+        </div>
+        <div class="range"><div><label for="wmOpacity">Độ mờ</label><output id="wmOpacityValue"></output></div><input id="wmOpacity" type="range" min="0" max="60" step="1" value="18"></div>
+        <details>
+          <summary>Chỉnh thêm kích thước / mật độ / độ nghiêng</summary>
+          <div class="range"><div><label for="wmSize">Cỡ chữ theo ảnh</label><output id="wmSizeValue"></output></div><input id="wmSize" type="range" min="1" max="9" step="1" value="3"></div>
+          <div class="range"><div><label for="wmGap">Khoảng cách giữa các hàng</label><output id="wmGapValue"></output></div><input id="wmGap" type="range" min="2" max="9" step="1" value="5"></div>
+          <div class="range"><div><label for="wmAngle">Góc nghiêng</label><output id="wmAngleValue"></output></div><input id="wmAngle" type="range" min="-60" max="60" step="1" value="-28"></div>
+        </details>
+        <p class="helper">Mặc định phủ chữ lặp chéo, mờ nhẹ trên toàn ảnh như ví dụ bạn cung cấp.</p>
+      </div>
+      <div class="group">
+        <details>
+          <summary>3. Chất lượng và kích thước xuất</summary>
+          <div class="fields">
+            <label for="format">Định dạng<select id="format"><option value="image/jpeg">JPG</option><option value="image/png">PNG</option><option value="image/webp">WebP</option></select></label>
+            <label for="maxEdge">Kích thước<select id="maxEdge"><option value="0">Giữ nguyên ảnh gốc</option><option value="4000">Cạnh dài tối đa 4000px</option><option value="3000">Cạnh dài tối đa 3000px</option><option value="2048">Cạnh dài tối đa 2048px</option></select></label>
+          </div>
+          <div class="range"><div><label for="quality">Chất lượng JPG/WebP</label><output id="qualityValue"></output></div><input id="quality" type="range" min="70" max="100" step="1" value="92"></div>
+          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL), đúng chiều và độ phân giải gốc nếu chọn giữ nguyên. ZIP có thể lớn khi chọn 100 ảnh.</p>
+        </details>
+      </div>
+      <p class="privacy">Không dùng AI dựng lại ảnh. Chỉ thay đổi sáng, màu, độ nét và thêm chữ bảo vệ. Ảnh gốc không bị ghi đè. Đối với ảnh rất lớn, nên chọn cạnh dài 3000px để tránh thiếu bộ nhớ trên điện thoại.</p>
+    </aside>
+  </div>
+</main>
+<script src="app.js"></script>
+</body>
+</html>
