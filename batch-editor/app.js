@@ -1,9 +1,9 @@
-/* Image Studio DHL - Batch Photo Editor R20.13. Browser-only, no uploads. */
+/* Image Studio DHL - Batch Photo Editor R20.14. Browser-only, no uploads. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
-  const state = { files: [], index: 0, busy: false, cancel: false, previewSeq: 0, timer: null };
+  const state = { files: [], index: 0, busy: false, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, totals: { originals:0, exported:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
     shop: { exposure:14, brightness:8, contrast:8, vibrance:18, sharpness:26 },
@@ -11,6 +11,14 @@
   };
   const clamp = v => Math.max(0, Math.min(255, v));
   const number = id => Number(el(id).value);
+  const mb = size => (size / 1e6).toFixed(2)+' MB';
+  function totalSize(files) { return files.reduce((sum,file)=>sum+file.size,0); }
+  function previewSizes(input,output,estimate) {
+    el('originalMB').textContent=input == null?'—':mb(input);
+    el('outputMB').textContent=output == null?'Đang tính…':mb(output);
+    el('totalBeforeMB').textContent=mb(state.totals.originals);
+    el('totalAfterMB').textContent=estimate == null?'Chưa có số liệu':mb(estimate)+' (ước tính)';
+  }
   function show(message, error) {
     el('status').textContent = message;
     el('status').classList.toggle('error', !!error);
@@ -128,8 +136,9 @@
   }
   function setPreviewStatus() {
     const len=state.files.length;
-    el('count').textContent=len+' ảnh';
+    el('count').textContent=len+' ảnh • '+mb(state.totals.originals);
     el('download').disabled=!len||state.busy;
+    el('saveFolder').disabled=!len||state.busy;
     el('clear').disabled=!len||state.busy;
     el('previous').disabled=!len||state.index===0||state.busy;
     el('next').disabled=!len||state.index===len-1||state.busy;
@@ -151,6 +160,7 @@
     const id=++state.previewSeq, file=state.files[state.index];
     if(!file || state.busy) return;
     el('previewNote').textContent='Đang tạo ảnh xem trước…';
+    previewSizes(file.size,null,null);
     let img;
     try {
       img=await decode(file);
@@ -161,59 +171,49 @@
       canvas.width=c.width;canvas.height=c.height;
       canvas.getContext('2d').drawImage(c,0,0);
       c.width=0;c.height=0;
-      el('previewNote').textContent='Xem trước ảnh '+(state.index+1)+' • Xuất sẽ dùng thông số này cho toàn bộ ảnh';
+      el('previewNote').textContent='Xem trước ảnh '+(state.index+1)+' • Đang tính dung lượng xuất thực tế…';
+      clearTimeout(state.sizeTimer);
+      state.sizeTimer=setTimeout(()=>measureSelectedFile(id,file),400);
     } catch(e) {if(id===state.previewSeq)show('Lỗi xem trước: '+e.message,true);}
     finally {release(img);}
+  }
+  async function measureSelectedFile(id,file) {
+    if(id!==state.previewSeq || state.busy) return;
+    let img,canvas;
+    try {
+      const c=config();
+      img=await decode(file);
+      if(id!==state.previewSeq || state.busy) return;
+      canvas=renderImage(img,c,false);
+      const blob=await blobFromCanvas(canvas,c);
+      if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ kiểu ảnh này');
+      if(id!==state.previewSeq || state.busy) return;
+      const estimate=state.totals.originals*blob.size/Math.max(1,file.size);
+      previewSizes(file.size,blob.size,estimate);
+      const difference=(blob.size/file.size-1)*100;
+      const change=(difference>0?'+':'')+difference.toFixed(1)+'%';
+      el('previewNote').textContent='Dung lượng ảnh đã chỉnh: '+mb(blob.size)+' ('+change+' so với gốc). Tổng chỉ là ước tính dựa trên ảnh này.';
+    } catch(e) {
+      if(id===state.previewSeq){
+        el('outputMB').textContent='Không tính được';
+        el('previewNote').textContent='Không tính được dung lượng: '+e.message;
+      }
+    } finally {
+      release(img);
+      if(canvas){ canvas.width=0;canvas.height=0; }
+    }
   }
   function loadFiles(list) {
     if(state.busy) return;
     const arr=Array.from(list).filter(f=>/^image\/(png|jpeg|webp)$/.test(f.type)||/\.(jpe?g|png|webp)$/i.test(f.name));
     if(!arr.length){show('Chỉ hỗ trợ ảnh JPG, PNG và WebP.',true);return;}
     state.files=arr;state.index=0;
+    state.totals={originals:totalSize(arr),exported:0};
     setPreviewStatus(); schedulePreview();
     el('progress').value=0;el('progress').max=arr.length;
     el('failures').textContent='';
-    show('Đã chọn '+arr.length+' ảnh. Chỉnh một lần, bấm Xuất ZIP để áp dụng tất cả.');
-  }
-  const crcTable=(()=>{
-    const table=new Uint32Array(256);
-    for(let i=0;i<256;i++) {
-      let crc=i;
-      for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
-      table[i]=crc>>>0;
-    }
-    return table;
-  })();
-  function crc32(bytes) {
-    let crc=0xffffffff;
-    for(let i=0;i<bytes.length;i++) crc=crcTable[(crc^bytes[i])&255]^(crc>>>8);
-    return (crc^0xffffffff)>>>0;
-  }
-  function le16(view,pos,n){view.setUint16(pos,n&65535,true);}
-  function le32(view,pos,n){view.setUint32(pos,n>>>0,true);}
-  function zipStamp(date) {
-    const y=Math.max(1980,date.getFullYear());
-    return [((date.getHours()&31)<<11)|((date.getMinutes()&63)<<5)|((date.getSeconds()>>1)&31),(((y-1980)&127)<<9)|(((date.getMonth()+1)&15)<<5)|(date.getDate()&31)];
-  }
-  function zipLocal(name,crc,size,time,date) {
-    const a=new Uint8Array(30),v=new DataView(a.buffer);
-    le32(v,0,0x04034b50);le16(v,4,20);le16(v,6,0x0800);le16(v,8,0);
-    le16(v,10,time);le16(v,12,date);le32(v,14,crc);le32(v,18,size);le32(v,22,size);
-    le16(v,26,name.length);le16(v,28,0);return a;
-  }
-  function zipCentral(name,crc,size,offset,time,date) {
-    const a=new Uint8Array(46),v=new DataView(a.buffer);
-    le32(v,0,0x02014b50);le16(v,4,20);le16(v,6,20);le16(v,8,0x0800);
-    le16(v,10,0);le16(v,12,time);le16(v,14,date);le32(v,16,crc);
-    le32(v,20,size);le32(v,24,size);le16(v,28,name.length);
-    le16(v,30,0);le16(v,32,0);le16(v,34,0);le16(v,36,0);
-    le32(v,38,0);le32(v,42,offset);return a;
-  }
-  function zipEnd(entries,centralSize,centralOffset) {
-    const a=new Uint8Array(22),v=new DataView(a.buffer);
-    le32(v,0,0x06054b50);le16(v,4,0);le16(v,6,0);
-    le16(v,8,entries);le16(v,10,entries);le32(v,12,centralSize);le32(v,16,centralOffset);
-    le16(v,20,0);return a;
+    el('totalAfterMB').textContent='Chưa có số liệu';
+    show('Đã chọn '+arr.length+' ảnh ('+mb(state.totals.originals)+'). Xuất ảnh riêng lẻ, không tạo ZIP.');
   }
   function nameFor(file,ext,used) {
     const base=file.name.replace(/\.[^.]+$/,'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').slice(0,100)||'image';
@@ -232,16 +232,19 @@
     a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),60000);
   }
-  async function exportAll() {
+  async function exportAll(directoryHandle=null) {
     if(state.busy||!state.files.length)return;
     state.busy=true;state.cancel=false;state.previewSeq++;
+    clearTimeout(state.sizeTimer);
     const c=config(), ext=c.format==='image/png'?'png':c.format==='image/webp'?'webp':'jpg';
-    const files=state.files.slice(), used=new Set(), parts=[],central=[],errors=[];
-    let offset=0,count=0,centralSize=0;
-    el('download').disabled=true;el('selectFiles').disabled=true;el('clear').disabled=true;
+    const files=state.files.slice(), used=new Set(),errors=[];
+    let count=0,originalTotal=0,outputTotal=0;
+    el('download').disabled=true;el('saveFolder').disabled=true;
+    el('selectFiles').disabled=true;el('clear').disabled=true;
     el('cancel').hidden=false;
     el('progress').max=files.length;el('progress').value=0;
     el('failures').textContent='';
+    el('totalAfterMB').textContent='0.00 MB (đang xuất)';
     show('Đang xử lý 0 / '+files.length+' ảnh…');
     try {
       for(let i=0;i<files.length;i++) {
@@ -251,41 +254,63 @@
           img=await decode(files[i]);
           canvas=renderImage(img,c,false);
           const blob=await blobFromCanvas(canvas,c);
-          if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ định dạng '+c.format);
-          if(blob.size>0xffffffff)throw new Error('File vượt giới hạn ZIP32');
-          const bytes=new Uint8Array(await blob.arrayBuffer());
-          const checksum=crc32(bytes);
-          const name=new TextEncoder().encode(nameFor(files[i],ext,used));
-          const stamp=zipStamp(new Date(files[i].lastModified||Date.now()));
-          const local=zipLocal(name,checksum,blob.size,stamp[0],stamp[1]);
-          if(offset+local.length+name.length+blob.size>0xffffffff)throw new Error('Tổng ZIP vượt 4 GB. Hãy chia lô.');
-          parts.push(local,name,blob);
-          const cent=zipCentral(name,checksum,blob.size,offset,stamp[0],stamp[1]);
-          central.push(cent,name);centralSize+=cent.length+name.length;
-          offset+=local.length+name.length+blob.size;
-          count++;
-        }catch(e){errors.push(files[i].name+': '+e.message);}
+          if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ '+c.format);
+          const filename=nameFor(files[i],ext,used);
+          if(directoryHandle){
+            const handle=await directoryHandle.getFileHandle(filename,{create:true});
+            const stream=await handle.createWritable();
+            try { await stream.write(blob);await stream.close(); }
+            catch(e){try{await stream.abort()}catch(_){}throw e;}
+          }else{
+            triggerDownload(blob,filename);
+          }
+          count++; originalTotal+=files[i].size; outputTotal+=blob.size;
+        } catch(e) { errors.push(files[i].name+': '+e.message); }
         finally {
           release(img);
           if(canvas){canvas.width=0;canvas.height=0;}
         }
         el('progress').value=i+1;
-        show('Đã xử lý '+(i+1)+' / '+files.length+' • Thành công '+count+' • Lỗi '+errors.length);
-        await new Promise(resolve=>setTimeout(resolve,0));
+        el('totalAfterMB').textContent=mb(outputTotal)+' (đã xuất '+count+' ảnh)';
+        show('Đã xử lý '+(i+1)+' / '+files.length+' • Thành công '+count+' • Lỗi '+errors.length+' • '+mb(outputTotal));
+        await new Promise(resolve=>setTimeout(resolve,50));
       }
+      state.totals.exported=outputTotal;
       if(count) {
-        if(offset+centralSize>0xffffffff)throw new Error('ZIP quá lớn để xuất. Hãy chia lô nhỏ.');
-        const zip=new Blob([...parts,...central,zipEnd(count,centralSize,offset)],{type:'application/zip'});
-        triggerDownload(zip,'DHL_Anh_Bao_Ve_'+count+'_anh.zip');
-        show('Đã xuất ZIP gồm '+count+' ảnh'+(state.cancel?' (đã dừng phần còn lại)':'')+'.'+(errors.length?' Lỗi '+errors.length+' ảnh.':''));
-      }else show('Không có ảnh nào xuất thành công.',true);
-      if(errors.length) el('failures').textContent='Ảnh lỗi:\n'+errors.join('\n');
-    }catch(e) {show('Lỗi tạo ZIP: '+e.message,true);}
+        const note=directoryHandle?'Đã lưu '+count+' ảnh trong thư mục đã chọn.':
+          'Đã gửi lệnh tải '+count+' ảnh riêng lẻ. Nếu trình duyệt hỏi, hãy cho phép tải nhiều tệp.';
+        show(note+' Tổng gốc (ảnh thành công): '+mb(originalTotal)+' → đầu ra: '+mb(outputTotal)+
+          (state.cancel?' (đã dừng phần còn lại)':'')+(errors.length?'. Lỗi '+errors.length+' ảnh.':''));
+      }else show('Không xuất thành công ảnh nào.',true);
+      if(errors.length)el('failures').textContent='Ảnh lỗi:\n'+errors.join('\n');
+    } catch(e) { show('Lỗi xuất ảnh: '+e.message,true); }
     finally {
       state.busy=false;state.cancel=false;
       el('selectFiles').disabled=false;el('cancel').hidden=true;
       setPreviewStatus();schedulePreview();
     }
+  }
+  async function saveToFolder() {
+    if(state.busy||!state.files.length)return;
+    if(typeof window.showDirectoryPicker!=='function'){
+      show('Thiết bị không hỗ trợ chọn thư mục. Hãy dùng Tải tất cả ảnh.',true);return;
+    }
+    try {
+      // Must be invoked directly in the click handler to retain user activation.
+      const dir=await window.showDirectoryPicker({mode:'readwrite'});
+      if(!dir)return;
+      await exportAll(dir);
+    } catch(e) {
+      if(e.name!=='AbortError')show('Không thể chọn thư mục: '+e.message,true);
+    }
+  }
+  function updateFormatHelp() {
+    const png=el('format').value==='image/png';
+    el('quality').disabled=png;
+    el('qualityRow').hidden=png;
+    el('formatHelp').textContent=png
+      ? 'PNG nén không mất dữ liệu: giữ nguyên giá trị pixel của ảnh sau chỉnh sửa; có thể nặng hơn JPG/WebP.'
+      : 'JPG/WebP có thể giảm dung lượng, nhưng nén lại có hao hụt dữ liệu. Mức chất lượng cao hạn chế khác biệt, không đảm bảo giống hệt pixel.';
   }
   function applyPreset(name) {
     const preset=presets[name];
@@ -303,11 +328,17 @@
     el('previous').addEventListener('click',()=>{if(state.index>0){state.index--;setPreviewStatus();schedulePreview();}});
     el('next').addEventListener('click',()=>{if(state.index<state.files.length-1){state.index++;setPreviewStatus();schedulePreview();}});
     el('fileSelect').addEventListener('change',e=>{state.index=Number(e.target.value);setPreviewStatus();schedulePreview();});
-    el('download').addEventListener('click',exportAll);
+    el('download').addEventListener('click',()=>exportAll());
+    el('saveFolder').addEventListener('click',saveToFolder);
+    el('saveFolder').hidden=typeof window.showDirectoryPicker!=='function';
+    el('format').addEventListener('change',updateFormatHelp);
+    updateFormatHelp();
     el('cancel').addEventListener('click',()=>{state.cancel=true;show('Đang dừng sau ảnh hiện tại…');});
     el('clear').addEventListener('click',()=>{
       if(state.busy)return;
-      state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);
+      state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);clearTimeout(state.sizeTimer);
+      state.totals={originals:0,exported:0};
+      previewSizes(null,null,null);
       el('preview').width=1;el('preview').height=1;
       el('progress').value=0;el('failures').textContent='';
       el('previewNote').textContent='Chọn ảnh để xem trước';
