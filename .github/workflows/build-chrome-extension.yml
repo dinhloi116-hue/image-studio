@@ -1,5 +1,5 @@
 name: Build Chrome Extension
-run-name: Package current DHL Image Studio from main
+run-name: Package DHL Image Studio R20.16 (quality-first batch export)
 
 on:
   push:
@@ -31,6 +31,8 @@ jobs:
           node --check chrome-extension/popup.js
           node --check chrome-extension/app.js
           node --check chrome-extension/batch-editor.js
+          grep -q 'async function encodeForExport' chrome-extension/batch-editor.js
+          grep -q 'id="compressionMode"' chrome-extension/batch-editor.html
           test -s chrome-extension/batch-editor.html
           test -s chrome-extension/tool.html
           python3 - <<'PY'
