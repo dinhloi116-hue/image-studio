@@ -152,15 +152,15 @@ progress{width:100%;height:12px;accent-color:var(--green)}
         <details>
           <summary>3. Chất lượng và kích thước xuất</summary>
           <div class="fields">
-            <label for="format">Định dạng<select id="format"><option value="image/png" selected>PNG (không mất dữ liệu)</option><option value="image/jpeg">JPG (nén có hao hụt)</option><option value="image/webp">WebP (nén có hao hụt)</option></select></label>
+            <label for="format">Định dạng<select id="format"><option value="auto" selected>Tự động (giữ định dạng ảnh gốc)</option><option value="image/jpeg">JPG (nhẹ, chất lượng cao)</option><option value="image/webp">WebP (nhẹ hơn, có hao hụt)</option><option value="image/png">PNG (file có thể rất nặng)</option></select></label>
             <label for="maxEdge">Kích thước<select id="maxEdge"><option value="0">Giữ nguyên ảnh gốc</option><option value="4000">Cạnh dài tối đa 4000px</option><option value="3000">Cạnh dài tối đa 3000px</option><option value="2048">Cạnh dài tối đa 2048px</option></select></label>
           </div>
-          <div class="range" id="qualityRow" hidden><div><label for="quality">Chất lượng JPG/WebP</label><output id="qualityValue"></output></div><input id="quality" type="range" min="70" max="100" step="1" value="96"></div>
-          <p class="helper" id="formatHelp">PNG là nén không mất dữ liệu, nhưng file có thể nặng hơn JPG.</p>
-          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL) và độ phân giải nếu chọn giữ nguyên. PNG giữ nguyên pixel sau chỉnh sửa nhưng không bảo đảm dung lượng nhỏ hơn.</p>
+          <div class="range" id="qualityRow"><div><label for="quality">Chất lượng JPG/WebP</label><output id="qualityValue"></output></div><input id="quality" type="range" min="70" max="100" step="1" value="94"></div>
+          <p class="helper" id="formatHelp">Mặc định giữ JPG → JPG, PNG → PNG, WebP → WebP để tránh tăng dung lượng bất thường. Mức chất lượng cao áp dụng cho JPG/WebP.</p>
+          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL) và độ phân giải nếu chọn giữ nguyên. Không tự chuyển JPG sang PNG vì có thể tăng dung lượng gấp nhiều lần.</p>
         </details>
       </div>
-      <p class="privacy">Không dùng AI dựng lại ảnh, không ghi đè ảnh gốc. PNG bảo toàn dữ liệu pixel sau chỉnh sửa. JPG/WebP nén tốt hơn nhưng không thể cam kết giữ nguyên tuyệt đối chất lượng. Với ảnh rất lớn, nên chia lô để tránh hết bộ nhớ trên điện thoại.</p>
+      <p class="privacy">Không dùng AI dựng lại ảnh, không ghi đè ảnh gốc. Giữ nguyên định dạng file gốc theo mặc định. JPG/WebP nén lại có hao hụt nhưng ở mức chất lượng cao thường khó nhận thấy. PNG không mất dữ liệu sau chỉnh nhưng có thể rất nặng. Với ảnh rất lớn, nên chia lô để tránh hết bộ nhớ trên điện thoại.</p>
     </aside>
   </div>
 </main>
