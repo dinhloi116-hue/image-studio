@@ -3,7 +3,7 @@
   'use strict';
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
-  const state = { files: [], index: 0, busy: false, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, totals: { originals:0, exported:0 } };
+  const state = { files: [], index: 0, busy: false, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, totals: { originals:0, exported:0, exportCount:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
     shop: { exposure:14, brightness:8, contrast:8, vibrance:18, sharpness:26 },
@@ -17,7 +17,10 @@
     el('originalMB').textContent=input == null?'—':mb(input);
     el('outputMB').textContent=output == null?'Đang tính…':mb(output);
     el('totalBeforeMB').textContent=mb(state.totals.originals);
-    el('totalAfterMB').textContent=estimate == null?'Chưa có số liệu':mb(estimate)+' (ước tính)';
+    const validActual=state.totals.exportCount>0 && state.lastExportSettings===JSON.stringify(config());
+    el('totalAfterMB').textContent=validActual
+      ?mb(state.totals.exported)+' (thực tế, '+state.totals.exportCount+' ảnh)'
+      :(estimate == null?'Chưa có số liệu':mb(estimate)+' (ước tính)');
   }
   function show(message, error) {
     el('status').textContent = message;
@@ -208,7 +211,8 @@
     const arr=Array.from(list).filter(f=>/^image\/(png|jpeg|webp)$/.test(f.type)||/\.(jpe?g|png|webp)$/i.test(f.name));
     if(!arr.length){show('Chỉ hỗ trợ ảnh JPG, PNG và WebP.',true);return;}
     state.files=arr;state.index=0;
-    state.totals={originals:totalSize(arr),exported:0};
+    state.totals={originals:totalSize(arr),exported:0,exportCount:0};
+    state.lastExportSettings=null;
     setPreviewStatus(); schedulePreview();
     el('progress').value=0;el('progress').max=arr.length;
     el('failures').textContent='';
@@ -230,7 +234,7 @@
   function triggerDownload(blob,name) {
     const url=URL.createObjectURL(blob),a=document.createElement('a');
     a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
-    setTimeout(()=>URL.revokeObjectURL(url),60000);
+    setTimeout(()=>URL.revokeObjectURL(url),10000);
   }
   async function exportAll(directoryHandle=null) {
     if(state.busy||!state.files.length)return;
@@ -239,6 +243,7 @@
     const c=config(), ext=c.format==='image/png'?'png':c.format==='image/webp'?'webp':'jpg';
     const files=state.files.slice(), used=new Set(),errors=[];
     let count=0,originalTotal=0,outputTotal=0;
+    state.lastExportSettings=JSON.stringify(c);
     el('download').disabled=true;el('saveFolder').disabled=true;
     el('selectFiles').disabled=true;el('clear').disabled=true;
     el('cancel').hidden=false;
@@ -276,6 +281,7 @@
         await new Promise(resolve=>setTimeout(resolve,50));
       }
       state.totals.exported=outputTotal;
+      state.totals.exportCount=count;
       if(count) {
         const note=directoryHandle?'Đã lưu '+count+' ảnh trong thư mục đã chọn.':
           'Đã gửi lệnh tải '+count+' ảnh riêng lẻ. Nếu trình duyệt hỏi, hãy cho phép tải nhiều tệp.';
@@ -337,7 +343,8 @@
     el('clear').addEventListener('click',()=>{
       if(state.busy)return;
       state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);clearTimeout(state.sizeTimer);
-      state.totals={originals:0,exported:0};
+      state.totals={originals:0,exported:0,exportCount:0};
+      state.lastExportSettings=null;
       previewSizes(null,null,null);
       el('preview').width=1;el('preview').height=1;
       el('progress').value=0;el('failures').textContent='';
