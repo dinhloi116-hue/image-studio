@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "Image Studio DHL - Local",
-  "version": "2.0.7",
-  "version_name": "2.0.7 • R20.14-BATCH-MB-DIRECT-DOWNLOAD",
+  "name": "DHL Image Studio | Chỉnh ảnh hàng loạt",
+  "version": "2.0.8",
+  "version_name": "2.0.8 • R20.14-BATCH-MB-DIRECT-DOWNLOAD",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
@@ -17,17 +17,17 @@
     "service_worker": "background.js"
   },
   "icons": {
-    "16": "icons/icon128.png",
-    "32": "icons/icon128.png",
-    "48": "icons/icon128.png",
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "Mở Image Studio DHL",
+    "default_title": "DHL Image Studio — Chỉnh ảnh hàng loạt",
     "default_icon": {
-      "16": "icons/icon128.png",
-      "32": "icons/icon128.png",
-      "48": "icons/icon128.png",
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     }
   }
