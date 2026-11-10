@@ -175,9 +175,18 @@
     el('failures').textContent='';
     show('Đã chọn '+arr.length+' ảnh. Chỉnh một lần, bấm Xuất ZIP để áp dụng tất cả.');
   }
+  const crcTable=(()=>{
+    const table=new Uint32Array(256);
+    for(let i=0;i<256;i++) {
+      let crc=i;
+      for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);
+      table[i]=crc>>>0;
+    }
+    return table;
+  })();
   function crc32(bytes) {
     let crc=0xffffffff;
-    for(let i=0;i<bytes.length;i++) {crc^=bytes[i];for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}
+    for(let i=0;i<bytes.length;i++) crc=crcTable[(crc^bytes[i])&255]^(crc>>>8);
     return (crc^0xffffffff)>>>0;
   }
   function le16(view,pos,n){view.setUint16(pos,n&65535,true);}
@@ -242,6 +251,7 @@
           img=await decode(files[i]);
           canvas=renderImage(img,c,false);
           const blob=await blobFromCanvas(canvas,c);
+          if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ định dạng '+c.format);
           if(blob.size>0xffffffff)throw new Error('File vượt giới hạn ZIP32');
           const bytes=new Uint8Array(await blob.arrayBuffer());
           const checksum=crc32(bytes);
@@ -307,7 +317,7 @@
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
     zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');loadFiles(e.dataTransfer.files);});
-    el('goBack').addEventListener('click',()=>{if(history.length>1)history.back();else location.href='../direct/';});
+    el('goBack').addEventListener('click',()=>{if(history.length>1)history.back();else location.href=location.protocol==='chrome-extension:'?'tool.html':'../direct/';});
     refreshLabels();setPreviewStatus();applyPreset('shop');
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
