@@ -105,7 +105,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
           <div class="sizeStat"><span>Tất cả ảnh • Tổng gốc</span><strong id="totalBeforeMB">0.00 MB</strong></div>
           <div class="sizeStat"><span>Tất cả ảnh • Sau xử lý</span><strong id="totalAfterMB">Chưa có số liệu</strong></div>
         </div>
-        <p class="sizeHint">Dung lượng sau chỉnh của ảnh đang xem được tính bằng cách xuất thử đúng cài đặt. Tổng trước khi xuất chỉ là ước tính theo ảnh đó; sau khi tải sẽ hiện số thực tế.</p>
+        <p class="sizeHint">Dung lượng được đo bằng file xuất thử thực tế. Nếu không thể giảm MB ở chất lượng cao, tool báo rõ và không xuất ảnh đó. Tổng trước khi tải chỉ là ước tính.</p>
         <div class="actionRow">
           <button id="download" class="export" type="button" disabled>↓ Tải tất cả ảnh (không ZIP)</button>
           <button id="saveFolder" type="button" hidden disabled>📁 Lưu vào thư mục</button>
@@ -155,12 +155,19 @@ progress{width:100%;height:12px;accent-color:var(--green)}
             <label for="format">Định dạng<select id="format"><option value="auto" selected>Tự động (giữ định dạng ảnh gốc)</option><option value="image/jpeg">JPG (nhẹ, chất lượng cao)</option><option value="image/webp">WebP (nhẹ hơn, có hao hụt)</option><option value="image/png">PNG (file có thể rất nặng)</option></select></label>
             <label for="maxEdge">Kích thước<select id="maxEdge"><option value="0">Giữ nguyên ảnh gốc</option><option value="4000">Cạnh dài tối đa 4000px</option><option value="3000">Cạnh dài tối đa 3000px</option><option value="2048">Cạnh dài tối đa 2048px</option></select></label>
           </div>
-          <div class="range" id="qualityRow"><div><label for="quality">Chất lượng JPG/WebP</label><output id="qualityValue"></output></div><input id="quality" type="range" min="70" max="100" step="1" value="94"></div>
+          <label class="full" for="compressionMode" style="display:grid;gap:6px;margin:10px 0">
+            <strong>Ưu tiên dung lượng</strong>
+            <select id="compressionMode">
+              <option value="under" selected>Giảm MB, giữ chất lượng thị giác cao (mặc định)</option>
+              <option value="best">Ưu tiên chất lượng tối đa (có thể tăng MB)</option>
+            </select>
+          </label>
+          <div class="range" id="qualityRow"><div><label for="quality">Chất lượng cao nhất JPG/WebP</label><output id="qualityValue"></output></div><input id="quality" type="range" min="92" max="98" step="1" value="96"></div>
           <p class="helper" id="formatHelp">Mặc định giữ JPG → JPG, PNG → PNG, WebP → WebP để tránh tăng dung lượng bất thường. Mức chất lượng cao áp dụng cho JPG/WebP.</p>
-          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL) và độ phân giải nếu chọn giữ nguyên. Không tự chuyển JPG sang PNG vì có thể tăng dung lượng gấp nhiều lần.</p>
+          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL) và độ phân giải nếu chọn giữ nguyên. Giữ nguyên định dạng và độ phân giải. Chế độ giảm MB tự tìm mức nén cao nhất có thể mà vẫn nhỏ hơn ảnh gốc; không đạt mức chất lượng tối thiểu thì báo lỗi thay vì xuất ảnh nặng hơn.</p>
         </details>
       </div>
-      <p class="privacy">Không dùng AI dựng lại ảnh, không ghi đè ảnh gốc. Giữ nguyên định dạng file gốc theo mặc định. JPG/WebP nén lại có hao hụt nhưng ở mức chất lượng cao thường khó nhận thấy. PNG không mất dữ liệu sau chỉnh nhưng có thể rất nặng. Với ảnh rất lớn, nên chia lô để tránh hết bộ nhớ trên điện thoại.</p>
+      <p class="privacy">Không dùng AI dựng lại ảnh, không ghi đè ảnh gốc. Không thể vừa chỉnh màu/watermark, vừa bảo toàn mọi pixel JPG và luôn giảm MB. Chế độ mặc định ưu tiên chất lượng nhìn cao, tự giới hạn dung lượng và bỏ qua ảnh không đạt; không tự hạ mức nén dưới 92%. PNG giữ pixel sau chỉnh nhưng có thể không giảm được dung lượng. Với ảnh rất lớn, nên chia lô để tránh hết bộ nhớ trên điện thoại.</p>
     </aside>
   </div>
 </main>
