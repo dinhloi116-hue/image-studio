@@ -236,6 +236,19 @@
     a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),10000);
   }
+  async function uniqueFolderName(dir,filename) {
+    const i=filename.lastIndexOf('.');
+    const stem=i>0?filename.slice(0,i):filename, extension=i>0?filename.slice(i):'';
+    for(let n=1;n<10000;n++){
+      const candidate=n===1?filename:stem+'_'+n+extension;
+      try { await dir.getFileHandle(candidate); }
+      catch(error) {
+        if(error.name==='NotFoundError')return candidate;
+        throw error;
+      }
+    }
+    throw new Error('Quá nhiều tên tệp trùng trong thư mục.');
+  }
   async function exportAll(directoryHandle=null) {
     if(state.busy||!state.files.length)return;
     state.busy=true;state.cancel=false;state.previewSeq++;
@@ -262,7 +275,8 @@
           if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ '+c.format);
           const filename=nameFor(files[i],ext,used);
           if(directoryHandle){
-            const handle=await directoryHandle.getFileHandle(filename,{create:true});
+            const safeName=await uniqueFolderName(directoryHandle,filename);
+            const handle=await directoryHandle.getFileHandle(safeName,{create:true});
             const stream=await handle.createWritable();
             try { await stream.write(blob);await stream.close(); }
             catch(e){try{await stream.abort()}catch(_){}throw e;}
