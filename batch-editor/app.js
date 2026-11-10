@@ -1,4 +1,4 @@
-/* Image Studio DHL - Batch Photo Editor R20.14. Browser-only, no uploads. */
+/* Image Studio DHL - Batch Photo Editor R20.15. Preserve source image format by default. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
@@ -11,6 +11,21 @@
   };
   const clamp = v => Math.max(0, Math.min(255, v));
   const number = id => Number(el(id).value);
+  function sourceMime(file) {
+    const type=(file.type||'').toLowerCase();
+    if(type==='image/jpeg'||/\.jpe?g$/i.test(file.name))return 'image/jpeg';
+    if(type==='image/webp'||/\.webp$/i.test(file.name))return 'image/webp';
+    return 'image/png';
+  }
+  function perFileConfig(c,file) {
+    return c.format==='auto'?{...c,format:sourceMime(file)}:c;
+  }
+  function outputExtension(mime) {
+    return mime==='image/jpeg'?'jpg':mime==='image/webp'?'webp':'png';
+  }
+  function activeSourceFormats() {
+    return new Set(state.files.map(file=>sourceMime(file)));
+  }
   const mb = size => (size / 1e6).toFixed(2)+' MB';
   function totalSize(files) { return files.reduce((sum,file)=>sum+file.size,0); }
   function previewSizes(input,output,estimate) {
@@ -168,7 +183,7 @@
     try {
       img=await decode(file);
       if(id!==state.previewSeq) return;
-      const c=renderImage(img,config(),true);
+      const c=renderImage(img,perFileConfig(config(),file),true);
       if(id!==state.previewSeq) return;
       const canvas=el('preview');
       canvas.width=c.width;canvas.height=c.height;
@@ -184,7 +199,7 @@
     if(id!==state.previewSeq || state.busy) return;
     let img,canvas;
     try {
-      const c=config();
+      const c=perFileConfig(config(),file);
       img=await decode(file);
       if(id!==state.previewSeq || state.busy) return;
       canvas=renderImage(img,c,false);
@@ -193,6 +208,7 @@
       if(id!==state.previewSeq || state.busy) return;
       const estimate=state.totals.originals*blob.size/Math.max(1,file.size);
       previewSizes(file.size,blob.size,estimate);
+      el('outputMB').textContent=mb(blob.size)+' ('+outputExtension(c.format).toUpperCase()+')';
       const difference=(blob.size/file.size-1)*100;
       const change=(difference>0?'+':'')+difference.toFixed(1)+'%';
       el('previewNote').textContent='Dung lượng ảnh đã chỉnh: '+mb(blob.size)+' ('+change+' so với gốc). Tổng chỉ là ước tính dựa trên ảnh này.';
@@ -213,7 +229,7 @@
     state.files=arr;state.index=0;
     state.totals={originals:totalSize(arr),exported:0,exportCount:0};
     state.lastExportSettings=null;
-    setPreviewStatus(); schedulePreview();
+    setPreviewStatus(); updateFormatHelp(); schedulePreview();
     el('progress').value=0;el('progress').max=arr.length;
     el('failures').textContent='';
     el('totalAfterMB').textContent='Chưa có số liệu';
@@ -253,7 +269,7 @@
     if(state.busy||!state.files.length)return;
     state.busy=true;state.cancel=false;state.previewSeq++;
     clearTimeout(state.sizeTimer);
-    const c=config(), ext=c.format==='image/png'?'png':c.format==='image/webp'?'webp':'jpg';
+    const c=config();
     const files=state.files.slice(), used=new Set(),errors=[];
     let count=0,originalTotal=0,outputTotal=0;
     state.lastExportSettings=JSON.stringify(c);
@@ -269,11 +285,12 @@
         if(state.cancel)break;
         let img,canvas;
         try {
+          const one=perFileConfig(c,files[i]);
           img=await decode(files[i]);
-          canvas=renderImage(img,c,false);
-          const blob=await blobFromCanvas(canvas,c);
-          if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ '+c.format);
-          const filename=nameFor(files[i],ext,used);
+          canvas=renderImage(img,one,false);
+          const blob=await blobFromCanvas(canvas,one);
+          if(blob.type && blob.type!==one.format) throw new Error('Trình duyệt không hỗ trợ '+one.format);
+          const filename=nameFor(files[i],outputExtension(one.format),used);
           if(directoryHandle){
             const safeName=await uniqueFolderName(directoryHandle,filename);
             const handle=await directoryHandle.getFileHandle(safeName,{create:true});
@@ -325,12 +342,20 @@
     }
   }
   function updateFormatHelp() {
-    const png=el('format').value==='image/png';
-    el('quality').disabled=png;
-    el('qualityRow').hidden=png;
-    el('formatHelp').textContent=png
-      ? 'PNG nén không mất dữ liệu: giữ nguyên giá trị pixel của ảnh sau chỉnh sửa; có thể nặng hơn JPG/WebP.'
-      : 'JPG/WebP có thể giảm dung lượng, nhưng nén lại có hao hụt dữ liệu. Mức chất lượng cao hạn chế khác biệt, không đảm bảo giống hệt pixel.';
+    const format=el('format').value;
+    const allPng=format==='auto' && state.files.length && [...activeSourceFormats()].every(t=>t==='image/png');
+    const useLossless=format==='image/png'||allPng;
+    el('quality').disabled=!!useLossless;
+    el('qualityRow').hidden=!!useLossless;
+    let help;
+    if(format==='auto'){
+      help='Mặc định giữ đúng định dạng từng ảnh: JPG → JPG, PNG → PNG, WebP → WebP. JPG/WebP dùng chất lượng '+number('quality')+'%; ảnh có thể tăng hoặc giảm MB sau chỉnh sửa.';
+    }else if(format==='image/png'){
+      help='PNG nén không mất dữ liệu ảnh sau chỉnh sửa nhưng ảnh JPG đổi sang PNG có thể nặng gấp nhiều lần.';
+    }else{
+      help='JPG/WebP nén có hao hụt dữ liệu. Chọn chất lượng cao để ít thay đổi bằng mắt thường; không đảm bảo giữ nguyên tuyệt đối.';
+    }
+    el('formatHelp').textContent=help;
   }
   function applyPreset(name) {
     const preset=presets[name];
@@ -339,7 +364,7 @@
     refreshLabels();schedulePreview();
   }
   function init() {
-    keys.forEach(id=>el(id).addEventListener('input',()=>{refreshLabels();schedulePreview();}));
+    keys.forEach(id=>el(id).addEventListener('input',()=>{refreshLabels();if(id==='quality')updateFormatHelp();schedulePreview();}));
     ['wmMode','wmColor','wmText','format','maxEdge'].forEach(id=>{
       el(id).addEventListener('input',schedulePreview);el(id).addEventListener('change',schedulePreview);
     });
@@ -363,7 +388,7 @@
       el('preview').width=1;el('preview').height=1;
       el('progress').value=0;el('failures').textContent='';
       el('previewNote').textContent='Chọn ảnh để xem trước';
-      setPreviewStatus();show('Đã xóa danh sách. Ảnh gốc trên máy không thay đổi.');
+      setPreviewStatus();updateFormatHelp();show('Đã xóa danh sách. Ảnh gốc trên máy không thay đổi.');
     });
     const zone=el('dropZone');
     zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag');});
