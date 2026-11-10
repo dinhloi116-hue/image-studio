@@ -1,4 +1,5 @@
 name: Build Chrome Extension
+run-name: Package current DHL Image Studio from main
 
 on:
   push:
