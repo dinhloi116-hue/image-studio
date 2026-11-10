@@ -1,4 +1,4 @@
-/* Image Studio DHL - Batch Photo Editor R20.15. Preserve source image format by default. */
+/* Image Studio DHL - Batch Photo Editor R20.16. Adaptive, size-limited quality-first export. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
@@ -48,7 +48,7 @@
       wmMode:el('wmMode').value, wmOpacity:number('wmOpacity')/100,
       wmSize:number('wmSize')/100, wmGap:number('wmGap'), wmAngle:number('wmAngle'),
       wmColor:el('wmColor').value, format:el('format').value,
-      quality:number('quality')/100, maxEdge:number('maxEdge')
+      quality:number('quality')/100, maxEdge:number('maxEdge'), compressionMode:el('compressionMode').value
     };
   }
   function formatValue(id) {
@@ -203,7 +203,7 @@
       img=await decode(file);
       if(id!==state.previewSeq || state.busy) return;
       canvas=renderImage(img,c,false);
-      const blob=await blobFromCanvas(canvas,c);
+      const {blob,quality}=await encodeForExport(canvas,c,file);
       if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ kiểu ảnh này');
       if(id!==state.previewSeq || state.busy) return;
       const estimate=state.totals.originals*blob.size/Math.max(1,file.size);
@@ -211,7 +211,7 @@
       el('outputMB').textContent=mb(blob.size)+' ('+outputExtension(c.format).toUpperCase()+')';
       const difference=(blob.size/file.size-1)*100;
       const change=(difference>0?'+':'')+difference.toFixed(1)+'%';
-      el('previewNote').textContent='Dung lượng ảnh đã chỉnh: '+mb(blob.size)+' ('+change+' so với gốc). Tổng chỉ là ước tính dựa trên ảnh này.';
+      el('previewNote').textContent='Sau chỉnh: '+mb(blob.size)+' ('+change+' so với gốc)'+(quality!=null?' • mức nén '+Math.round(quality*100)+'%':'')+'. Tổng chỉ là ước tính từ ảnh đang xem.';
     } catch(e) {
       if(id===state.previewSeq){
         el('outputMB').textContent='Không tính được';
@@ -246,6 +246,47 @@
       canvas.toBlob(blob=>blob?resolve(blob):reject(new Error('Không mã hóa được ảnh')),
         c.format,c.format==='image/png'?undefined:c.quality);
     });
+  }
+  /**
+   * Size-capped, visually high-quality export. Re-encoding JPEG/WebP
+   * always incurs some change and never claims strict pixel losslessness.
+   */
+  async function encodeForExport(canvas,c,originalFile) {
+    if(c.format==='image/png'){
+      const blob=await blobFromCanvas(canvas,c);
+      if(c.compressionMode==='under' && blob.size>=originalFile.size){
+        throw new Error('PNG sau chỉnh lớn hơn ảnh gốc ('+mb(blob.size)+' > '+mb(originalFile.size)+'). Không thể vừa giảm dung lượng vừa đảm bảo lossless; có thể chọn chế độ Chất lượng tối đa để vẫn xuất.');
+      }
+      return {blob,quality:null};
+    }
+    if(c.compressionMode!=='under'){
+      const quality=Math.min(.98,c.quality);
+      const blob=await blobFromCanvas(canvas,{...c,quality});
+      return {blob,quality};
+    }
+    const limit=Math.floor(originalFile.size*.99);
+    const high=Math.min(.98,Math.max(.86,c.quality));
+    const low=Math.min(.88,high);
+    const encode=async quality=>{
+      const blob=await blobFromCanvas(canvas,{...c,quality});
+      if(blob.type && blob.type!==c.format)throw Error('Trình duyệt không hỗ trợ '+c.format);
+      return {blob,quality};
+    };
+    let best=await encode(high);
+    if(best.blob.size<=limit)return best;
+    const minimum=await encode(low);
+    if(minimum.blob.size>limit){
+      throw new Error('Không thể giảm từ '+mb(minimum.blob.size)+' xuống dưới '+mb(originalFile.size)+' ở chất lượng '+Math.round(low*100)+'% trở lên. Bỏ qua ảnh này thay vì tăng dung lượng hay tự giảm chất lượng quá mức.');
+    }
+    let lo=low,hi=high;
+    best=minimum;
+    for(let tries=0;tries<6 && hi-lo>.004;tries++){
+      const mid=(lo+hi)/2;
+      const candidate=await encode(mid);
+      if(candidate.blob.size<=limit){lo=mid;best=candidate;}
+      else hi=mid;
+    }
+    return best;
   }
   function triggerDownload(blob,name) {
     const url=URL.createObjectURL(blob),a=document.createElement('a');
@@ -288,7 +329,7 @@
           const one=perFileConfig(c,files[i]);
           img=await decode(files[i]);
           canvas=renderImage(img,one,false);
-          const blob=await blobFromCanvas(canvas,one);
+          const {blob}=await encodeForExport(canvas,one,files[i]);
           if(blob.type && blob.type!==one.format) throw new Error('Trình duyệt không hỗ trợ '+one.format);
           const filename=nameFor(files[i],outputExtension(one.format),used);
           if(directoryHandle){
@@ -349,11 +390,11 @@
     el('qualityRow').hidden=!!useLossless;
     let help;
     if(format==='auto'){
-      help='Mặc định giữ đúng định dạng từng ảnh: JPG → JPG, PNG → PNG, WebP → WebP. JPG/WebP dùng chất lượng '+number('quality')+'%; ảnh có thể tăng hoặc giảm MB sau chỉnh sửa.';
+      help='Giữ nguyên định dạng JPG / PNG / WebP từng ảnh. '+(el('compressionMode').value==='under'?'Chỉ xuất file nhỏ hơn ảnh gốc; ưu tiên chất lượng cao và bỏ qua ảnh không đạt.':'Ưu tiên chất lượng cao, có thể lớn hơn ảnh gốc.')+' JPG/WebP vẫn mã hóa lại, không thể bảo đảm giống hệt từng pixel.';
     }else if(format==='image/png'){
       help='PNG nén không mất dữ liệu ảnh sau chỉnh sửa nhưng ảnh JPG đổi sang PNG có thể nặng gấp nhiều lần.';
     }else{
-      help='JPG/WebP nén có hao hụt dữ liệu. Chọn chất lượng cao để ít thay đổi bằng mắt thường; không đảm bảo giữ nguyên tuyệt đối.';
+      help='JPG/WebP được mã hóa lại có hao hụt nhẹ, giữ chất lượng thị giác cao nhưng không lossless tuyệt đối. Chế độ giảm MB không hạ mức nén dưới 88%.';
     }
     el('formatHelp').textContent=help;
   }
@@ -365,7 +406,7 @@
   }
   function init() {
     keys.forEach(id=>el(id).addEventListener('input',()=>{refreshLabels();if(id==='quality')updateFormatHelp();schedulePreview();}));
-    ['wmMode','wmColor','wmText','format','maxEdge'].forEach(id=>{
+    ['wmMode','wmColor','wmText','format','maxEdge','compressionMode'].forEach(id=>{
       el(id).addEventListener('input',schedulePreview);el(id).addEventListener('change',schedulePreview);
     });
     document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
@@ -377,6 +418,7 @@
     el('saveFolder').addEventListener('click',saveToFolder);
     el('saveFolder').hidden=typeof window.showDirectoryPicker!=='function';
     el('format').addEventListener('change',updateFormatHelp);
+    el('compressionMode').addEventListener('change',updateFormatHelp);
     updateFormatHelp();
     el('cancel').addEventListener('click',()=>{state.cancel=true;show('Đang dừng sau ảnh hiện tại…');});
     el('clear').addEventListener('click',()=>{
