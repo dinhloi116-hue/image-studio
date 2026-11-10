@@ -24,7 +24,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Dấu chìm chữ bảo vệ: lặp chéo toàn ảnh như MIUI Gallery, một dấu ở giữa hoặc tắt; chỉnh nội dung, màu, độ mờ, kích thước, mật độ và góc nghiêng.
 - Xuất **từng ảnh hàng loạt, không ZIP**; Chrome có thể xin quyền tải nhiều file. Trên trình duyệt hỗ trợ File System Access API có thêm nút chọn thư mục lưu trực tiếp. Tên ảnh thêm `_DHL`, tùy chọn giữ nguyên kích thước, 4000/3000/2048 px; JPG/PNG/WebP.
 - Hiện **MB gốc** và **MB xuất thử thực tế** cho ảnh đang xem, tổng MB gốc, tổng MB ước tính trước khi xuất và tổng MB thực tế sau khi xuất.
-- **PNG nén lossless** giữ nguyên pixel ảnh đã chỉnh sửa, dù dung lượng có thể tăng. JPG/WebP nén lossy có thể giảm MB nhưng không đảm bảo giữ chất lượng tuyệt đối.
+- **Mặc định giữ định dạng nguồn** theo từng ảnh JPG → JPG, PNG → PNG, WebP → WebP, giảm nguy cơ tăng dung lượng gấp nhiều lần do chuyển JPG → PNG. JPG/WebP mặc định mức chất lượng 94%, nén lại vẫn có hao hụt; có thể tùy chỉnh. PNG lossless giữ nguyên pixel sau chỉnh nhưng có thể nặng.
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
@@ -32,7 +32,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.14 Batch Photo Export & MB Preview**.
+Bản hiện tại: **R20.15 Source Format Preservation**.
 
 ### Preset tram DTF
 
