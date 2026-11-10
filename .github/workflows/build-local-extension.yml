@@ -6,6 +6,7 @@ on:
     paths:
       - 'direct/index.html'
       - 'direct/version.txt'
+      - 'batch-editor/**'
       - 'assets/video-compressor-r199.js'
       - 'assets/video-compressor-core-r199.js'
       - 'assets/nameset-paste-r205.js'
@@ -51,6 +52,7 @@ jobs:
           for p in scripts.glob('*.js'): p.unlink()
 
           html=(root/'direct/index.html').read_text(encoding='utf-8')
+          html=html.replace('href="../batch-editor/"','href="batch-editor.html"')
           counter=0
 
           script_re=re.compile(r'<script(?P<attrs>[^>]*)>(?P<body>.*?)</script>',re.I|re.S)
@@ -83,6 +85,12 @@ jobs:
           html=html.replace('<title>Image Studio R19</title>','<title>Image Studio DHL - Local</title>')
           (ext/'tool.html').write_text(html,encoding='utf-8')
 
+          # Ship the same batch-photo editor for web and offline Chrome extension.
+          batch_html=(root/'batch-editor/index.html').read_text(encoding='utf-8')
+          batch_html=batch_html.replace('src="app.js"','src="batch-editor.js"')
+          (ext/'batch-editor.html').write_text(batch_html,encoding='utf-8')
+          shutil.copy2(root/'batch-editor/app.js',ext/'batch-editor.js')
+
           # Copy video/FFmpeg engine inside the extension so it runs locally.
           for name in ['video-compressor-r199.js','video-compressor-core-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js','image-sizing-r207.js']:
               shutil.copy2(root/'assets'/name, assets/name)
@@ -101,8 +109,8 @@ jobs:
           manifest={
             'manifest_version':3,
             'name':'Image Studio DHL - Local',
-            'version':'2.0.6',
-            'version_name':f'2.0.6 • {version}',
+            'version':'2.0.7',
+            'version_name':f'2.0.7 • {version}',
             'description':'Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.',
             'permissions':['storage','downloads','tabs','clipboardRead'],
             'host_permissions':['https://raw.githubusercontent.com/*'],
@@ -183,9 +191,10 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m json.tool chrome-extension/manifest.json >/dev/null
-          for f in chrome-extension/background.js chrome-extension/extension-update.js chrome-extension/tool-scripts/*.js; do node --check "$f"; done
+          for f in chrome-extension/background.js chrome-extension/extension-update.js chrome-extension/batch-editor.js chrome-extension/tool-scripts/*.js; do node --check "$f"; done
           grep -q 'chrome-extension/tool' /dev/null || true
           test -s chrome-extension/tool.html
+          test -s chrome-extension/batch-editor.html
           test -s chrome-extension/assets/ffmpeg-core.wasm
           test $(stat -c%s chrome-extension/assets/ffmpeg-core.wasm) -gt 20000000
 
