@@ -7,6 +7,7 @@ on:
       - 'direct/index.html'
       - 'direct/version.txt'
       - 'batch-editor/**'
+      - 'scripts/generate-chrome-icons.py'
       - 'assets/video-compressor-r199.js'
       - 'assets/video-compressor-core-r199.js'
       - 'assets/nameset-paste-r205.js'
@@ -33,6 +34,13 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Prepare Chrome icon renderer
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install image renderer
+        run: python -m pip install --quiet Pillow
+
       - name: Build self-contained extension
         shell: bash
         run: |
@@ -50,6 +58,10 @@ jobs:
 
           # Clear generated JS only; keep popup/app legacy files harmlessly for now.
           for p in scripts.glob('*.js'): p.unlink()
+
+          # Generate the full set of Chrome icon PNG sizes from one brand source.
+          import subprocess
+          subprocess.check_call(['python3','scripts/generate-chrome-icons.py',str(ext/'icons')])
 
           html=(root/'direct/index.html').read_text(encoding='utf-8')
           html=html.replace('href="../batch-editor/"','href="batch-editor.html"')
@@ -108,15 +120,15 @@ jobs:
 
           manifest={
             'manifest_version':3,
-            'name':'Image Studio DHL - Local',
-            'version':'2.0.7',
-            'version_name':f'2.0.7 • {version}',
+            'name':'DHL Image Studio | Chỉnh ảnh hàng loạt',
+            'version':'2.0.8',
+            'version_name':f'2.0.8 • {version}',
             'description':'Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.',
             'permissions':['storage','downloads','tabs','clipboardRead'],
             'host_permissions':['https://raw.githubusercontent.com/*'],
             'background':{'service_worker':'background.js'},
-            'icons':{'16':'icons/icon128.png','32':'icons/icon128.png','48':'icons/icon128.png','128':'icons/icon128.png'},
-            'action':{'default_title':'Mở Image Studio DHL','default_icon':{'16':'icons/icon128.png','32':'icons/icon128.png','48':'icons/icon128.png','128':'icons/icon128.png'}}
+            'icons':{'16':'icons/icon16.png','32':'icons/icon32.png','48':'icons/icon48.png','128':'icons/icon128.png'},
+            'action':{'default_title':'DHL Image Studio — Chỉnh ảnh hàng loạt','default_icon':{'16':'icons/icon16.png','32':'icons/icon32.png','48':'icons/icon48.png','128':'icons/icon128.png'}}
           }
           (ext/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
 
@@ -193,6 +205,15 @@ jobs:
           python3 -m json.tool chrome-extension/manifest.json >/dev/null
           for f in chrome-extension/background.js chrome-extension/extension-update.js chrome-extension/batch-editor.js chrome-extension/tool-scripts/*.js; do node --check "$f"; done
           grep -q 'chrome-extension/tool' /dev/null || true
+          python3 - <<'PY_ICONS'
+          from pathlib import Path
+          from PIL import Image
+          for size in (16,32,48,128):
+              path=Path(f'chrome-extension/icons/icon{size}.png')
+              with Image.open(path) as im:
+                  assert im.size==(size,size), (path,im.size)
+          print('All Chrome icons verified.')
+          PY_ICONS
           test -s chrome-extension/tool.html
           test -s chrome-extension/batch-editor.html
           test -s chrome-extension/assets/ffmpeg-core.wasm
