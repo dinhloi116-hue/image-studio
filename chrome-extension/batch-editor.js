@@ -212,6 +212,22 @@
       const difference=(blob.size/file.size-1)*100;
       const change=(difference>0?'+':'')+difference.toFixed(1)+'%';
       el('previewNote').textContent='Sau chỉnh: '+mb(blob.size)+' ('+change+' so với gốc)'+(quality!=null?' • mức nén '+Math.round(quality*100)+'%':'')+'. Tổng chỉ là ước tính từ ảnh đang xem.';
+      // Preview the actual encoded file rather than the pre-encoding canvas.
+      let exportedPreview;
+      try {
+        exportedPreview=await decode(blob);
+        if(id===state.previewSeq && !state.busy){
+          const [iw,ih]=imageDims(exportedPreview);
+          const scale=Math.min(1,980/Math.max(iw,ih));
+          const p=el('preview');
+          p.width=Math.max(1,Math.round(iw*scale));
+          p.height=Math.max(1,Math.round(ih*scale));
+          const ctx=p.getContext('2d');
+          ctx.imageSmoothingEnabled=true;
+          ctx.imageSmoothingQuality='high';
+          ctx.drawImage(exportedPreview,0,0,p.width,p.height);
+        }
+      } finally {release(exportedPreview);}
     } catch(e) {
       if(id===state.previewSeq){
         el('outputMB').textContent='Không tính được';
@@ -265,8 +281,8 @@
       return {blob,quality};
     }
     const limit=Math.floor(originalFile.size*.99);
-    const high=Math.min(.98,Math.max(.86,c.quality));
-    const low=Math.min(.88,high);
+    const high=Math.min(.98,Math.max(.92,c.quality));
+    const low=Math.min(.92,high);
     const encode=async quality=>{
       const blob=await blobFromCanvas(canvas,{...c,quality});
       if(blob.type && blob.type!==c.format)throw Error('Trình duyệt không hỗ trợ '+c.format);
@@ -394,7 +410,7 @@
     }else if(format==='image/png'){
       help='PNG nén không mất dữ liệu ảnh sau chỉnh sửa nhưng ảnh JPG đổi sang PNG có thể nặng gấp nhiều lần.';
     }else{
-      help='JPG/WebP được mã hóa lại có hao hụt nhẹ, giữ chất lượng thị giác cao nhưng không lossless tuyệt đối. Chế độ giảm MB không hạ mức nén dưới 88%.';
+      help='JPG/WebP được mã hóa lại có hao hụt nhẹ, giữ chất lượng thị giác cao nhưng không lossless tuyệt đối. Chế độ giảm MB không hạ mức nén dưới 92%.';
     }
     el('formatHelp').textContent=help;
   }
