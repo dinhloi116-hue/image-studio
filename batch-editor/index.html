@@ -4,6 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#101827">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon192.png">
+<link rel="apple-touch-icon" href="icons/icon192.png">
 <title>Chỉnh ảnh hàng loạt | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
@@ -70,7 +73,13 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 #status.error{color:#fda4af}
 #failures{white-space:pre-wrap;max-height:180px;overflow:auto;font-size:12px;color:#fca5a5}
 .privacy{font-size:12px;color:#99b2ce;line-height:1.55}
-.wmJump{border:1px solid #60a5fa;background:#0d3155;color:#d5edff;border-radius:10px;padding:10px 14px;text-decoration:none;font-weight:800;display:inline-flex;align-items:center;min-height:42px}.wmJump:hover{background:#184a78}.watermarkGroup{scroll-margin-top:18px;background:#102b45;padding:14px;border:1px solid #4776a6;border-radius:12px}.watermarkGroup h2{color:#dbeafe}.mobile-bottom{display:none}
+.wmJump{border:1px solid #60a5fa;background:#0d3155;color:#d5edff;border-radius:10px;padding:10px 14px;text-decoration:none;font-weight:800;display:inline-flex;align-items:center;min-height:42px}.wmJump:hover{background:#184a78}.watermarkGroup{scroll-margin-top:18px;background:#102b45;padding:14px;border:1px solid #4776a6;border-radius:12px}.watermarkGroup h2{color:#dbeafe}.installStrip{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;border:1px solid #256b8f;background:#0c2a40}
+.installStrip button{background:#0952a6;border-color:#4ba7fa}
+.installStrip strong{font-size:14px;display:block}
+.installStrip p{font-size:12px;color:#a8c9e4;margin:4px 0 0}
+.installStrip .installCopy{flex:1;min-width:160px}
+@media(display-mode:standalone){.installStrip{display:none!important}}
+.mobile-bottom{display:none}
 @media(max-width:850px){.workspace{grid-template-columns:1fr}.controls{grid-column:1;grid-row:2}.previewPanel{grid-column:1;grid-row:1;position:static}.canvasBox{min-height:200px}#preview{max-height:38vh}.top{padding:12px}.shell{padding:10px;gap:10px}.panel{padding:13px}.mobile-bottom{display:block}}
 @media(max-width:400px){.presetRow button{font-size:11px}.fields{grid-template-columns:1fr 1fr}.actionRow .export{width:100%}}
 </style>
@@ -81,6 +90,10 @@ progress{width:100%;height:12px;accent-color:var(--green)}
   <button id="goBack" type="button">← Về Image Studio</button>
 </header>
 <main class="shell">
+  <section class="panel installStrip" id="installStrip">
+    <div class="installCopy"><strong>📱 DHL Image Studio trên Xiaomi</strong><p id="installHint">Cài biểu tượng lên màn hình chính, mở như một ứng dụng. Ảnh chỉ xử lý trong điện thoại.</p></div>
+    <button id="installPwa" type="button" class="primary">Cài lên điện thoại</button>
+  </section>
   <section id="dropZone" class="panel">
     <div class="pickrow">
       <label for="selectFiles" class="pick">＋ Chọn nhiều ảnh</label>
