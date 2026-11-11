@@ -1,6 +1,6 @@
 IMAGE STUDIO DHL - LOCAL EXTENSION
 ==================================
-Tool version: R20.16-SIZE-CAPPED-HIGH-QUALITY
+Tool version: R20.17-XIAOMI-PWA-MOBILE
 
 CÀI LẦN ĐẦU BẰNG GITHUB DESKTOP
 1. GitHub Desktop -> Clone repository: dinhloi116-hue/image-studio

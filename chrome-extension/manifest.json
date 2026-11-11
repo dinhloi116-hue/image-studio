@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "DHL Image Studio | Chỉnh ảnh hàng loạt",
   "version": "2.0.8",
-  "version_name": "2.0.8 • R20.16-SIZE-CAPPED-HIGH-QUALITY",
+  "version_name": "2.0.8 • R20.17-XIAOMI-PWA-MOBILE",
   "description": "Image Studio chạy local. Cập nhật bằng GitHub Desktop Pull origin rồi Reload extension.",
   "permissions": [
     "storage",
