@@ -3,6 +3,72 @@
   'use strict';
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
+  const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode'];
+  const settingsKey='dhl-image-studio-android-settings-v1';
+  let installEvent=null;
+  window.addEventListener('beforeinstallprompt',event=>{
+    event.preventDefault();
+    installEvent=event;
+    const b=document.getElementById('installPwa');
+    if(b)b.textContent='Cài DHL Ảnh ngay';
+  });
+  window.addEventListener('appinstalled',()=>{
+    installEvent=null;
+    const banner=document.getElementById('installStrip');
+    if(banner)banner.hidden=true;
+  });
+  function storeSettings(){
+    try{
+      const saved={};
+      for(const id of savedSettingIds){const control=document.getElementById(id);if(control)saved[id]=control.value;}
+      localStorage.setItem(settingsKey,JSON.stringify(saved));
+    }catch(_){ /* private mode may block storage */ }
+  }
+  function restoreSettings(){
+    try{
+      const data=JSON.parse(localStorage.getItem(settingsKey)||'{}');
+      for(const id of savedSettingIds){
+        const node=document.getElementById(id);
+        if(node && Object.prototype.hasOwnProperty.call(data,id) &&
+          (node.tagName!=='SELECT' || [...node.options].some(option=>option.value===data[id])))node.value=data[id];
+      }
+    }catch(_){ /* use defaults if unavailable */ }
+  }
+  function initMobilePwa(){
+    const banner=document.getElementById('installStrip');
+    const button=document.getElementById('installPwa');
+    const hint=document.getElementById('installHint');
+    if(!button||!banner||!hint)return;
+    if(location.protocol!=='https:' && location.hostname!=='localhost'){
+      banner.hidden=true;
+      return;
+    }
+    const installed=window.matchMedia && window.matchMedia('(display-mode: standalone)').matches;
+    if(installed){banner.hidden=true;}
+    else{
+      button.addEventListener('click',async()=>{
+        if(installEvent){
+          const event=installEvent;
+          installEvent=null;
+          await event.prompt();
+          const choice=await event.userChoice;
+          if(choice?.outcome!=='accepted') {
+            hint.textContent='Để cài thủ công: Chrome ⋮ → Thêm vào màn hình chính → Cài đặt.';
+          }
+        }else{
+          hint.textContent='Mở bằng Chrome trên Xiaomi → dấu ba chấm ⋮ → Thêm vào màn hình chính → Cài đặt hoặc Thêm.';
+          show('Trong Chrome Xiaomi, chọn ⋮ → Thêm vào màn hình chính → Cài đặt hoặc Thêm.');
+        }
+      });
+    }
+    if('serviceWorker' in navigator){
+      navigator.serviceWorker.register('./sw.js',{scope:'./'}).then(()=>{
+        if(!installed)hint.textContent='Chọn Cài lên điện thoại hoặc dùng Chrome ⋮ → Thêm vào màn hình chính. Sau lần mở có mạng, công cụ chỉnh ảnh có thể hoạt động ngoại tuyến.';
+      }).catch(()=>{
+        if(!installed)hint.textContent='Có thể thêm biểu tượng bằng Chrome ⋮ → Thêm vào màn hình chính. Cần mạng khi mở trang.';
+      });
+    }
+  }
   const state = { files: [], index: 0, busy: false, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, totals: { originals:0, exported:0, exportCount:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
@@ -421,9 +487,11 @@
     refreshLabels();schedulePreview();
   }
   function init() {
-    keys.forEach(id=>el(id).addEventListener('input',()=>{refreshLabels();if(id==='quality')updateFormatHelp();schedulePreview();}));
+    restoreSettings();
+    initMobilePwa();
+    keys.forEach(id=>el(id).addEventListener('input',()=>{storeSettings();refreshLabels();if(id==='quality')updateFormatHelp();schedulePreview();}));
     ['wmMode','wmColor','wmText','format','maxEdge','compressionMode'].forEach(id=>{
-      el(id).addEventListener('input',schedulePreview);el(id).addEventListener('change',schedulePreview);
+      el(id).addEventListener('input',()=>{storeSettings();schedulePreview();});el(id).addEventListener('change',()=>{storeSettings();schedulePreview();});
     });
     document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
     el('selectFiles').addEventListener('change',e=>{loadFiles(e.target.files);e.target.value='';});
