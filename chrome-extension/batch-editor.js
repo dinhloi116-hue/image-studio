@@ -484,7 +484,7 @@
     const preset=presets[name];
     if(!preset)return;
     Object.entries(preset).forEach(([id,value])=>{el(id).value=String(value);});
-    refreshLabels();schedulePreview();
+    storeSettings();refreshLabels();schedulePreview();
   }
   function init() {
     restoreSettings();
