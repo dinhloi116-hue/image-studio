@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate recognizable DHL Image Studio Chrome icons in 16, 32, 48, 128 px."""
+"""Generate DHL Image Studio Chrome and Android PWA icons."""
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import sys
@@ -42,7 +42,14 @@ d.polygon(((75, 363), (383, 363), (448, 338), (422, 381), (91, 386)),
 d.rounded_rectangle((108, 409, 404, 466), radius=20, fill=(218, 23, 46, 255))
 center('SPORTS', font(53), 403, (255, 255, 255, 255))
 
-for size in (16, 32, 48, 128):
+for size in (16, 32, 48, 128, 192, 512):
     im.resize((size, size), Image.Resampling.LANCZOS).save(
         TARGET / f'icon{size}.png', optimize=True)
-print('Generated image-studio icon16/icon32/icon48/icon128.')
+for size in (192, 512):
+    # The central safe area must be preserved when Android masks an app icon.
+    maskable = Image.new('RGBA', (size, size), (5, 20, 50, 255))
+    inner = round(size * 0.75)
+    foreground = im.resize((inner, inner), Image.Resampling.LANCZOS)
+    maskable.alpha_composite(foreground, ((size-inner)//2, (size-inner)//2))
+    maskable.save(TARGET / f'icon{size}-maskable.png', optimize=True)
+print('Generated Chrome (16/32/48/128) and Android PWA (192/512 + maskable) icons.')
