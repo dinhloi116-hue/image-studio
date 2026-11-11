@@ -16,7 +16,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xuất ZIP / tải hàng loạt
 - Giao diện desktop và mobile
 
-## Chỉnh ảnh hàng loạt (R20.13)
+## Chỉnh ảnh hàng loạt (R20.17)
 
 - Vào tab **☀ Chỉnh ảnh hàng loạt** hoặc mở `batch-editor/` trên web.
 - Chọn nhiều ảnh JPG/PNG/WebP (phù hợp 50–100 ảnh từ điện thoại).
@@ -30,11 +30,21 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
+## Cài trên Xiaomi / Android (PWA)
+
+- Mở bằng **Google Chrome**: https://dinhloi116-hue.github.io/image-studio/batch-editor/
+- Chọn **Cài lên điện thoại** ngay trên trang nếu Chrome hiện hộp thoại cài đặt. Hoặc dùng menu **⋮ → Thêm vào màn hình chính → Cài đặt / Thêm**.
+- Ứng dụng có tên **DHL Ảnh**, biểu tượng DHL SPORTS riêng và giao diện standalone khi trình duyệt hỗ trợ.
+- Lần mở đầu tiên cần internet để lưu tệp ứng dụng. Sau đó phần **chỉnh ảnh hàng loạt** có thể hoạt động ngoại tuyến bằng Service Worker; ảnh chọn từ thiết bị vẫn chỉ được xử lý cục bộ.
+- Tự ghi nhớ các thông số chỉnh sáng, màu, watermark và chất lượng xuất trên thiết bị. **Không lưu ảnh người dùng** trong bộ nhớ ứng dụng.
+- Trên Xiaomi Android, tải hàng loạt từng file phụ thuộc quyền cho phép tải nhiều tệp của Chrome; có thể cần xác nhận một lần. Nút chọn thư mục trực tiếp chỉ xuất hiện khi trình duyệt hỗ trợ.
+- PWA **không phải APK**. Không cần Play Store hay cài Chrome Extension.
+
 ## Cách chạy
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.16 Adaptive Size-Capped Export**.
+Bản hiện tại: **R20.17 Xiaomi Android PWA**.
 
 ### Preset tram DTF
 
