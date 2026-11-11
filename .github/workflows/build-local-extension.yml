@@ -62,6 +62,7 @@ jobs:
           # Generate the full set of Chrome icon PNG sizes from one brand source.
           import subprocess
           subprocess.check_call(['python3','scripts/generate-chrome-icons.py',str(ext/'icons')])
+          subprocess.check_call(['python3','scripts/generate-chrome-icons.py',str(root/'batch-editor'/'icons')])
 
           html=(root/'direct/index.html').read_text(encoding='utf-8')
           html=html.replace('href="../batch-editor/"','href="batch-editor.html"')
@@ -100,6 +101,10 @@ jobs:
           # Ship the same batch-photo editor for web and offline Chrome extension.
           batch_html=(root/'batch-editor/index.html').read_text(encoding='utf-8')
           batch_html=batch_html.replace('src="app.js"','src="batch-editor.js"')
+          # The PWA manifest/service-worker belong to the web app, not chrome-extension://.
+          batch_html=batch_html.replace('<link rel="manifest" href="manifest.webmanifest">','')
+          batch_html=batch_html.replace('<link rel="icon" type="image/png" sizes="192x192" href="icons/icon192.png">','')
+          batch_html=batch_html.replace('<link rel="apple-touch-icon" href="icons/icon192.png">','')
           (ext/'batch-editor.html').write_text(batch_html,encoding='utf-8')
           shutil.copy2(root/'batch-editor/app.js',ext/'batch-editor.js')
 
@@ -224,7 +229,12 @@ jobs:
               path=Path(f'chrome-extension/icons/icon{size}.png')
               with Image.open(path) as im:
                   assert im.size==(size,size), (path,im.size)
-          print('All Chrome icons verified.')
+          for size in (192,512):
+              for suffix in ('','-maskable'):
+                  path=Path(f'batch-editor/icons/icon{size}{suffix}.png')
+                  with Image.open(path) as im:
+                      assert im.size==(size,size),(path,im.size)
+          print('Chrome and Android PWA icons verified.')
           PY_ICONS
           test -s chrome-extension/tool.html
           test -s chrome-extension/batch-editor.html
@@ -236,7 +246,7 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add chrome-extension
+          git add chrome-extension batch-editor/icons
           if git diff --cached --quiet; then exit 0; fi
           git commit -m 'Build local Image Studio extension for GitHub Desktop'
           for attempt in 1 2 3 4; do
