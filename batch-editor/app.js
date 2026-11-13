@@ -341,10 +341,38 @@
     canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     if(!ctx) throw new Error('Trình duyệt không hỗ trợ Canvas');
-    if(c.format==='image/jpeg') {ctx.fillStyle='#ffffff';ctx.fillRect(0,0,w,h);}
+    const hasAdjustments=!!(c.exposure||c.brightness||c.contrast||c.vibrance||c.sharpness);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    ctx.drawImage(img,0,0,w,h);
-    adjustPixels(ctx,w,h,c);
+    if(!hasAdjustments){
+      if(c.format==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);}
+      ctx.drawImage(img,0,0,w,h);
+    }else{
+      // Tile the corrections to avoid allocating multiple full-resolution
+      // RGBA arrays on Android. A one-pixel halo prevents sharpness seams.
+      const tile=document.createElement('canvas');
+      const tc=tile.getContext('2d',{willReadFrequently:true});
+      if(!tc)throw new Error('Không tạo được bộ nhớ xử lý ảnh');
+      const step=512,halo=c.sharpness?1:0;
+      try{
+        for(let y=0;y<h;y+=step){
+          for(let x=0;x<w;x+=step){
+            const left=Math.max(0,x-halo),top=Math.max(0,y-halo);
+            const right=Math.min(w,x+step+halo),bottom=Math.min(h,y+step+halo);
+            const tw=right-left,th=bottom-top;
+            tile.width=tw;tile.height=th;
+            tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';
+            if(c.format==='image/jpeg'){tc.fillStyle='#fff';tc.fillRect(0,0,tw,th);}
+            tc.drawImage(img,left*sw/w,top*sh/h,tw*sw/w,th*sh/h,0,0,tw,th);
+            adjustPixels(tc,tw,th,c);
+            // putImageData's dirty rectangle writes only the center area;
+            // neighbor tiles never modify source pixels for later tiles.
+            const data=tc.getImageData(0,0,tw,th);
+            ctx.putImageData(data,left,top,x-left,y-top,
+              Math.min(step,w-x),Math.min(step,h-y));
+          }
+        }
+      }finally {tile.width=0;tile.height=0;}
+    }
     drawWatermark(ctx,w,h,c);
     return canvas;
   }
