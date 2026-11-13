@@ -97,8 +97,8 @@ progress{width:100%;height:12px;accent-color:var(--green)}
   <section id="dropZone" class="panel">
     <div class="pickrow">
       <label for="selectFiles" class="pick">＋ Chọn nhiều ảnh</label>
-      <input id="selectFiles" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple>
-      <p>Chọn 50–100 ảnh, rồi bấm “Watermark chữ” hoặc chỉnh sáng, màu và độ nét.</p>
+      <input id="selectFiles" type="file" accept="image/jpeg,image/png,image/webp,image/avif,image/heic,image/heif,.jpg,.jpeg,.png,.webp,.avif,.heic,.heif" multiple>
+      <p>Chọn ảnh từ thư viện Xiaomi. Tool sẽ đọc một lần và lưu tạm dữ liệu trên máy để không bị mất quyền truy cập khi chỉnh hàng loạt.</p>
       <a class="wmJump" href="#wmSection">✍ Watermark chữ</a>
       <span id="count" class="count">0 ảnh</span>
     </div>
@@ -138,7 +138,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
           <label for="wmMode">Cách chèn<select id="wmMode"><option value="tile">Lặp chéo toàn ảnh</option><option value="center">Một dấu ở giữa</option><option value="none">Không chèn</option></select></label>
           <label for="wmColor">Màu chữ<select id="wmColor"><option value="#334155">Xám đậm</option><option value="#ffffff">Trắng</option><option value="#000000">Đen</option></select></label>
         </div>
-        <div class="range"><div><label for="wmOpacity">Độ mờ</label><output id="wmOpacityValue"></output></div><input id="wmOpacity" type="range" min="0" max="60" step="1" value="18"></div>
+        <div class="range"><div><label for="wmOpacity">Độ mờ</label><output id="wmOpacityValue"></output></div><input id="wmOpacity" type="range" min="0" max="60" step="1" value="10"></div>
         <details>
           <summary>Chỉnh thêm kích thước / mật độ / độ nghiêng</summary>
           <div class="range"><div><label for="wmSize">Cỡ chữ theo ảnh</label><output id="wmSizeValue"></output></div><input id="wmSize" type="range" min="1" max="9" step="1" value="3"></div>
@@ -154,12 +154,12 @@ progress{width:100%;height:12px;accent-color:var(--green)}
           <button type="button" data-preset="shop">Sáng bán hàng</button>
           <button type="button" data-preset="vivid">Rực và rõ</button>
         </div>
-        <p class="helper">Chọn nhanh một kiểu hoặc kéo từng thanh. Xem kết quả tức thì ở ảnh bên cạnh.</p>
-        <div class="range"><div><label for="exposure">Phơi sáng</label><output id="exposureValue"></output></div><input id="exposure" type="range" min="-150" max="150" step="1" value="14"></div>
-        <div class="range"><div><label for="brightness">Độ sáng</label><output id="brightnessValue"></output></div><input id="brightness" type="range" min="-100" max="100" step="1" value="8"></div>
-        <div class="range"><div><label for="contrast">Tương phản</label><output id="contrastValue"></output></div><input id="contrast" type="range" min="-100" max="100" step="1" value="8"></div>
-        <div class="range"><div><label for="vibrance">Độ rực màu</label><output id="vibranceValue"></output></div><input id="vibrance" type="range" min="-100" max="100" step="1" value="18"></div>
-        <div class="range"><div><label for="sharpness">Độ sắc nét</label><output id="sharpnessValue"></output></div><input id="sharpness" type="range" min="0" max="100" step="1" value="26"></div>
+        <p class="helper">Mặc định Rực và rõ. Các chỉnh sửa đã được chia nhỏ để giảm lỗi thiếu bộ nhớ trên Android.</p>
+        <div class="range"><div><label for="exposure">Phơi sáng</label><output id="exposureValue"></output></div><input id="exposure" type="range" min="-150" max="150" step="1" value="9"></div>
+        <div class="range"><div><label for="brightness">Độ sáng</label><output id="brightnessValue"></output></div><input id="brightness" type="range" min="-100" max="100" step="1" value="12"></div>
+        <div class="range"><div><label for="contrast">Tương phản</label><output id="contrastValue"></output></div><input id="contrast" type="range" min="-100" max="100" step="1" value="14"></div>
+        <div class="range"><div><label for="vibrance">Độ rực màu</label><output id="vibranceValue"></output></div><input id="vibrance" type="range" min="-100" max="100" step="1" value="33"></div>
+        <div class="range"><div><label for="sharpness">Độ sắc nét</label><output id="sharpnessValue"></output></div><input id="sharpness" type="range" min="0" max="100" step="1" value="34"></div>
       </div>
       <div class="group">
         <details>
