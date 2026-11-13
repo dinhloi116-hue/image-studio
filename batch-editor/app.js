@@ -434,18 +434,54 @@
       if(canvas){ canvas.width=0;canvas.height=0; }
     }
   }
-  function loadFiles(list) {
-    if(state.busy) return;
-    const arr=Array.from(list).filter(f=>/^image\/(png|jpeg|webp)$/.test(f.type)||/\.(jpe?g|png|webp)$/i.test(f.name));
-    if(!arr.length){show('Chỉ hỗ trợ ảnh JPG, PNG và WebP.',true);return;}
-    state.files=arr;state.index=0;
-    state.totals={originals:totalSize(arr),exported:0,exportCount:0};
+  async function loadFiles(list) {
+    if(state.busy||state.loading)return;
+    const selected=Array.from(list).filter(file=>
+      /^image\/(png|jpeg|webp|heic|heif|avif)$/.test(file.type)||
+      /\.(jpe?g|png|webp|heic|heif|avif)$/i.test(file.name));
+    if(!selected.length){show('Không tìm thấy ảnh JPG/PNG/WebP/HEIC/AVIF.',true);return;}
+    state.loading=true;
+    state.importSeq++;
+    clearTimeout(state.timer);clearTimeout(state.sizeTimer);
+    state.previewSeq++;
+    state.files=[];state.index=0;
+    state.totals={originals:0,exported:0,exportCount:0};
     state.lastExportSettings=null;
-    setPreviewStatus(); updateFormatHelp(); schedulePreview();
-    el('progress').value=0;el('progress').max=arr.length;
-    el('failures').textContent='';
-    el('totalAfterMB').textContent='Chưa có số liệu';
-    show('Đã chọn '+arr.length+' ảnh ('+mb(state.totals.originals)+'). Xuất ảnh riêng lẻ, không tạo ZIP.');
+    setPreviewStatus();
+    const accepted=[],errors=[];
+    el('progress').max=selected.length;el('progress').value=0;
+    let storage=null;
+    try{
+      await disposeTempFiles();
+      storage=await chooseTempFolder(totalSize(selected));
+      for(let i=0;i<selected.length;i++){
+        const source=selected[i];
+        show('Đang đọc và giữ dữ liệu ảnh Xiaomi: '+(i+1)+' / '+selected.length+'…');
+        try {
+          accepted.push(await snapshotSource(source,storage,i));
+        }catch(error){
+          errors.push(source.name+': '+String(error?.message||error));
+        }
+        el('progress').value=i+1;
+        await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }catch(error){
+      errors.push('Lỗi nhập ảnh: '+String(error?.message||error));
+    }finally{
+      state.loading=false;
+      state.files=accepted;
+      state.index=0;
+      state.totals={originals:totalSize(accepted),exported:0,exportCount:0};
+      setPreviewStatus();updateFormatHelp();
+      el('failures').textContent=errors.length?'Ảnh không thể nhập:\n'+errors.join('\n'):'';
+      if(accepted.length){
+        schedulePreview();
+        show('Đã nhập '+accepted.length+'/'+selected.length+' ảnh ('+mb(state.totals.originals)+'). Dữ liệu đã được tách khỏi bộ chọn ảnh Xiaomi.'+(errors.length?' Lỗi '+errors.length+' ảnh.':''));
+      }else{
+        show('Không đọc được dữ liệu ảnh nào từ thư viện Xiaomi. Kiểm tra quyền truy cập ảnh.',true);
+      }
+      el('progress').value=0;
+    }
   }
   function nameFor(file,ext,used) {
     const base=file.name.replace(/\.[^.]+$/,'').replace(/[\\/:*?"<>|\u0000-\u001f]/g,'_').slice(0,100)||'image';
@@ -519,7 +555,7 @@
     throw new Error('Quá nhiều tên tệp trùng trong thư mục.');
   }
   async function exportAll(directoryHandle=null) {
-    if(state.busy||!state.files.length)return;
+    if(state.busy||state.loading||!state.files.length)return;
     state.busy=true;state.cancel=false;state.previewSeq++;
     clearTimeout(state.sizeTimer);
     const c=config();
@@ -581,7 +617,7 @@
     }
   }
   async function saveToFolder() {
-    if(state.busy||!state.files.length)return;
+    if(state.busy||state.loading||!state.files.length)return;
     if(typeof window.showDirectoryPicker!=='function'){
       show('Thiết bị không hỗ trợ chọn thư mục. Hãy dùng Tải tất cả ảnh.',true);return;
     }
@@ -636,7 +672,8 @@
     updateFormatHelp();
     el('cancel').addEventListener('click',()=>{state.cancel=true;show('Đang dừng sau ảnh hiện tại…');});
     el('clear').addEventListener('click',()=>{
-      if(state.busy)return;
+      if(state.busy||state.loading)return;
+      disposeTempFiles();
       state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);clearTimeout(state.sizeTimer);
       state.totals={originals:0,exported:0,exportCount:0};
       state.lastExportSettings=null;
@@ -651,7 +688,8 @@
     zone.addEventListener('dragleave',()=>zone.classList.remove('drag'));
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');loadFiles(e.dataTransfer.files);});
     el('goBack').addEventListener('click',()=>{if(history.length>1)history.back();else location.href=location.protocol==='chrome-extension:'?'tool.html':'../direct/';});
-    refreshLabels();setPreviewStatus();applyPreset('shop');
+    refreshLabels();setPreviewStatus();
+    clearOldTempFiles();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
   else init();
