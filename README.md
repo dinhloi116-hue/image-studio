@@ -40,11 +40,14 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Trên Xiaomi Android, tải hàng loạt từng file phụ thuộc quyền cho phép tải nhiều tệp của Chrome; có thể cần xác nhận một lần. Nút chọn thư mục trực tiếp chỉ xuất hiện khi trình duyệt hỗ trợ.
 - PWA **không phải APK**. Không cần Play Store hay cài Chrome Extension.
 
+- **Khắc phục lỗi đọc ảnh Xiaomi:** giữ nguyên quyền bộ chọn ảnh trong quá trình sao chép dữ liệu đầu vào vào bộ nhớ cục bộ, nhận diện định dạng qua header JPG/PNG/WebP/HEIC/AVIF, giải mã dự phòng qua bitmap / URL / FileReader / WebCodecs, xử lý màu & nét theo ô 512 px tránh thiếu RAM. Trên lô lớn, có thể dùng bộ nhớ tạm riêng trong thiết bị và xóa khi xóa danh sách, dọn tệp cũ khi mở lại app.
+- Mặc định **Rực và rõ** cùng **watermark 10%** trên lần mở đầu tiên, sau đó ghi nhớ tùy chỉnh người dùng.
+
 ## Cách chạy
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.17 Xiaomi Android PWA**.
+Bản hiện tại: **R20.18 Xiaomi Image Decode Fix**.
 
 ### Preset tram DTF
 
