@@ -1,4 +1,4 @@
-/* Image Studio DHL - Batch Photo Editor R20.16. Adaptive, size-limited quality-first export. */
+/* Image Studio DHL - Batch Photo Editor R20.18. Xiaomi robust image import and decoding. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
@@ -69,7 +69,7 @@
       });
     }
   }
-  const state = { files: [], index: 0, busy: false, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, totals: { originals:0, exported:0, exportCount:0 } };
+  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, totals: { originals:0, exported:0, exportCount:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
     shop: { exposure:14, brightness:8, contrast:8, vibrance:18, sharpness:26 },
@@ -79,9 +79,25 @@
   const number = id => Number(el(id).value);
   function sourceMime(file) {
     const type=(file.type||'').toLowerCase();
-    if(type==='image/jpeg'||/\.jpe?g$/i.test(file.name))return 'image/jpeg';
-    if(type==='image/webp'||/\.webp$/i.test(file.name))return 'image/webp';
+    if(type==='image/jpeg'||type==='image/png'||type==='image/webp')return type;
+    if(type==='image/heic'||type==='image/heif'||type==='image/avif')return 'image/jpeg';
+    if(/\.jpe?g$/i.test(file.name))return 'image/jpeg';
+    if(/\.webp$/i.test(file.name))return 'image/webp';
     return 'image/png';
+  }
+  // The Xiaomi picker can supply a .jpg name for a different underlying codec.
+  function detectImageFormat(header) {
+    const v=new Uint8Array(header);
+    if(v.length>=3 && v[0]===255 && v[1]===216 && v[2]===255)return 'image/jpeg';
+    if(v.length>=8 && [137,80,78,71,13,10,26,10].every((x,i)=>v[i]===x))return 'image/png';
+    if(v.length>=12 && String.fromCharCode(...v.slice(0,4))==='RIFF' &&
+      String.fromCharCode(...v.slice(8,12))==='WEBP')return 'image/webp';
+    if(v.length>=12 && String.fromCharCode(...v.slice(4,8))==='ftyp'){
+      const brand=String.fromCharCode(...v.slice(8,12));
+      if(brand==='avif'||brand==='avis')return 'image/avif';
+      if(['heic','heix','hevc','hevx','mif1','msf1'].includes(brand))return 'image/heic';
+    }
+    return null;
   }
   function perFileConfig(c,file) {
     return c.format==='auto'?{...c,format:sourceMime(file)}:c;
@@ -128,21 +144,76 @@
     return (n>0?'+':'')+n;
   }
   function refreshLabels() { keys.forEach(id=>{ const node=el(id+'Value'); if(node)node.textContent=formatValue(id); }); }
-  async function decode(file) {
-    if (typeof createImageBitmap === 'function') {
-      try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
-      catch (_) { /* browser fallback */ }
-    }
+  // Decode from a stable in-memory/OPFS Blob, never directly from a picker URI.
+  // Retry both bitmap and HTML image pathways for Android WebView/Chrome.
+  function imageFromUrl(url,releaseUrl) {
     return new Promise((resolve,reject)=>{
-      const url=URL.createObjectURL(file);
       const img=new Image();
-      img.onload=()=>{URL.revokeObjectURL(url); resolve(img);};
-      img.onerror=()=>{URL.revokeObjectURL(url); reject(new Error('Không đọc được định dạng ảnh'));};
+      let settled=false;
+      const finish=(ok,error)=>{
+        if(settled)return;
+        settled=true;
+        img.onload=null;img.onerror=null;
+        if(releaseUrl)URL.revokeObjectURL(url);
+        if(ok)resolve(img);else reject(error);
+      };
+      img.onload=()=>finish(true);
+      img.onerror=()=>finish(false,new Error('Bộ giải mã ảnh của Chrome từ chối dữ liệu'));
+      img.decoding='async';
       img.src=url;
     });
   }
+  function imageFromDataUrl(blob) {
+    return new Promise((resolve,reject)=>{
+      const reader=new FileReader();
+      reader.onerror=()=>reject(reader.error||new Error('FileReader không đọc được dữ liệu'));
+      reader.onload=()=>{
+        imageFromUrl(String(reader.result),false).then(resolve,reject);
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+  async function decode(file) {
+    const data=file?.blob||file;
+    if(!data||!data.size)throw new Error('Tệp ảnh rỗng hoặc không truy cập được từ thư viện Xiaomi');
+    const attempts=[];
+    if(typeof createImageBitmap==='function'){
+      try{return await createImageBitmap(data,{imageOrientation:'from-image'});}
+      catch(error){attempts.push('Bitmap/EXIF: '+String(error?.message||error));}
+      try{return await createImageBitmap(data);}
+      catch(error){attempts.push('Bitmap: '+String(error?.message||error));}
+    }
+    try{return await imageFromUrl(URL.createObjectURL(data),true);}
+    catch(error){attempts.push('URL: '+String(error?.message||error));}
+    if(data.size<=25*1024*1024 && typeof FileReader!=='undefined'){
+      try{return await imageFromDataUrl(data);}
+      catch(error){attempts.push('FileReader: '+String(error?.message||error));}
+    }
+    // WebCodecs is an optional final fallback when Chrome supports the codec.
+    const mime=(data.type||file?.type||'').toLowerCase();
+    if(typeof ImageDecoder!=='undefined' && mime && typeof ImageDecoder.isTypeSupported==='function'){
+      let decoder=null;
+      try{
+        if(await ImageDecoder.isTypeSupported(mime)){
+          decoder=new ImageDecoder({data:data.stream(),type:mime,preferAnimation:false});
+          const result=await decoder.decode({frameIndex:0});
+          return result.image;
+        }
+      }catch(error){attempts.push('WebCodecs: '+String(error?.message||error));}
+      finally{try{decoder?.close()}catch(_){ }}
+    }
+    let type=mime;
+    try{
+      const head=await data.slice(0,32).arrayBuffer();
+      type=detectImageFormat(head)||mime;
+    }catch(_){ }
+    const hint=type==='image/heic'?'Dữ liệu thực tế là HEIC/HEIF; Chrome không giải mã được. Hãy xuất bản JPG chuẩn từ thư viện Xiaomi.':
+      type==='image/avif'?'Ảnh thực tế là AVIF, trình duyệt này không hỗ trợ giải mã.':
+      'Dữ liệu ảnh không giải mã được trong Chrome Android. Kiểm tra ảnh gốc hoặc cập nhật Chrome.';
+    throw new Error(hint+' ['+(file.name||'ảnh')+' • '+(type||'không rõ')+'] ('+attempts.slice(0,2).join('; ')+')');
+  }
   function release(img) { if(img && typeof img.close === 'function') img.close(); }
-  function imageDims(img) {return [img.width || img.naturalWidth, img.height || img.naturalHeight];}
+  function imageDims(img) {return [img.width || img.naturalWidth || img.displayWidth, img.height || img.naturalHeight || img.displayHeight];}
   function adjustPixels(ctx,w,h,c) {
     if (!c.exposure && !c.brightness && !c.contrast && !c.vibrance && !c.sharpness) return;
     const image=ctx.getImageData(0,0,w,h), d=image.data, lut=new Uint8ClampedArray(256);
