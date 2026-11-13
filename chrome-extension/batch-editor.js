@@ -4,7 +4,7 @@
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
   const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode'];
-  const settingsKey='dhl-image-studio-android-settings-v1';
+  const settingsKey='dhl-image-studio-android-settings-v2';
   let installEvent=null;
   window.addEventListener('beforeinstallprompt',event=>{
     event.preventDefault();
@@ -110,6 +110,65 @@
   }
   const mb = size => (size / 1e6).toFixed(2)+' MB';
   function totalSize(files) { return files.reduce((sum,file)=>sum+file.size,0); }
+
+  const OPFS_THRESHOLD=160*1024*1024;
+  const TEMP_PREFIX='dhl-image-temporary-';
+  async function disposeTempFiles() {
+    const name=state.tempFolderName;
+    state.tempFolderName=null;
+    if(!name||!navigator.storage?.getDirectory)return;
+    try { const root=await navigator.storage.getDirectory();await root.removeEntry(name,{recursive:true}); }
+    catch(_) { /* cleanup on next launch */ }
+  }
+  async function clearOldTempFiles() {
+    if(!navigator.storage?.getDirectory)return;
+    try{
+      const root=await navigator.storage.getDirectory();
+      for await(const [name] of root.entries()){
+        if(name.startsWith(TEMP_PREFIX)&&name!==state.tempFolderName){
+          try{await root.removeEntry(name,{recursive:true});}catch(_){}
+        }
+      }
+    }catch(_){}
+  }
+  async function chooseTempFolder(total) {
+    if(total<OPFS_THRESHOLD||!navigator.storage?.getDirectory)return null;
+    try{
+      const root=await navigator.storage.getDirectory();
+      const name=TEMP_PREFIX+Date.now()+'-'+Math.random().toString(36).slice(2,9);
+      const folder=await root.getDirectoryHandle(name,{create:true});
+      state.tempFolderName=name;
+      return folder;
+    }catch(_){return null;}
+  }
+  async function snapshotSource(source,folder,index) {
+    let blob;
+    if(folder) {
+      try {
+        const handle=await folder.getFileHandle('image-'+index,{create:true});
+        const writer=await handle.createWritable();
+        try{await writer.write(source);await writer.close();}
+        catch(e){try{await writer.abort();}catch(_){}throw e;}
+        blob=await handle.getFile();
+      }catch(_){blob=null;}
+    }
+    if(!blob){
+      let bytes;
+      try{bytes=await source.arrayBuffer();}
+      catch(_){
+        const url=URL.createObjectURL(source);
+        try{const res=await fetch(url);if(!res.ok)throw Error('HTTP '+res.status);bytes=await res.arrayBuffer();}
+        finally{URL.revokeObjectURL(url);}
+      }
+      if(!bytes?.byteLength)throw new Error('Dữ liệu ảnh rỗng hoặc quyền truy cập đã hết hạn');
+      blob=new Blob([bytes],{type:source.type||'application/octet-stream'});
+    }
+    const signature=detectImageFormat(await blob.slice(0,32).arrayBuffer());
+    const mime=signature||source.type||'application/octet-stream';
+    return {name:source.name,size:blob.size,type:mime,lastModified:source.lastModified,
+      blob:blob.type===mime?blob:blob.slice(0,blob.size,mime)};
+  }
+
   function previewSizes(input,output,estimate) {
     el('originalMB').textContent=input == null?'—':mb(input);
     el('outputMB').textContent=output == null?'Đang tính…':mb(output);
@@ -292,9 +351,9 @@
   function setPreviewStatus() {
     const len=state.files.length;
     el('count').textContent=len+' ảnh • '+mb(state.totals.originals);
-    el('download').disabled=!len||state.busy;
-    el('saveFolder').disabled=!len||state.busy;
-    el('clear').disabled=!len||state.busy;
+    el('download').disabled=!len||state.busy||state.loading;
+    el('saveFolder').disabled=!len||state.busy||state.loading;
+    el('clear').disabled=!len||state.busy||state.loading;
     el('previous').disabled=!len||state.index===0||state.busy;
     el('next').disabled=!len||state.index===len-1||state.busy;
     el('fileName').textContent=len?state.files[state.index].name:'Chưa chọn ảnh';
