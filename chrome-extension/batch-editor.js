@@ -469,6 +469,7 @@
       /\.(jpe?g|png|webp|heic|heif|avif)$/i.test(file.name));
     if(!selected.length){show('Không tìm thấy ảnh JPG/PNG/WebP/HEIC/AVIF.',true);return;}
     state.loading=true;
+    el('selectFiles').disabled=true;
     state.importSeq++;
     clearTimeout(state.timer);clearTimeout(state.sizeTimer);
     state.previewSeq++;
@@ -497,6 +498,7 @@
       errors.push('Lỗi nhập ảnh: '+String(error?.message||error));
     }finally{
       state.loading=false;
+      el('selectFiles').disabled=false;
       state.files=accepted;
       state.index=0;
       state.totals={originals:totalSize(accepted),exported:0,exportCount:0};
@@ -688,7 +690,7 @@
       el(id).addEventListener('input',()=>{storeSettings();schedulePreview();});el(id).addEventListener('change',()=>{storeSettings();schedulePreview();});
     });
     document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
-    el('selectFiles').addEventListener('change',e=>{loadFiles(e.target.files);e.target.value='';});
+    el('selectFiles').addEventListener('change',async e=>{const files=Array.from(e.target.files);try{await loadFiles(files);}finally{e.target.value='';}});
     el('previous').addEventListener('click',()=>{if(state.index>0){state.index--;setPreviewStatus();schedulePreview();}});
     el('next').addEventListener('click',()=>{if(state.index<state.files.length-1){state.index++;setPreviewStatus();schedulePreview();}});
     el('fileSelect').addEventListener('change',e=>{state.index=Number(e.target.value);setPreviewStatus();schedulePreview();});
