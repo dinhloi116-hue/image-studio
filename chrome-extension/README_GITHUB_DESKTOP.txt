@@ -1,6 +1,6 @@
 IMAGE STUDIO DHL - LOCAL EXTENSION
 ==================================
-Tool version: R20.17-XIAOMI-PWA-MOBILE
+Tool version: R20.18-XIAOMI-IMAGE-DECODE-FIX
 
 CÀI LẦN ĐẦU BẰNG GITHUB DESKTOP
 1. GitHub Desktop -> Clone repository: dinhloi116-hue/image-studio
