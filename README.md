@@ -30,6 +30,16 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
+## Cắt ảnh tự động hàng loạt (R20.19)
+
+- Trong **Chỉnh ảnh hàng loạt**, chọn ô tích **AUTO CROP** (mặc định tắt, không tác động nếu chưa bật).
+- Tự nhận diện chủ thể bằng tương phản với màu nền mép ảnh; có chế độ cắt giữa ảnh khi nền quá phức tạp. Đây là thuật toán heuristic, không phải AI tách nền; cần kiểm tra những ảnh nền gần màu sản phẩm.
+- Các tỷ lệ: **1:1** (mặc định khi bật), **4:5**, **3:4**, **2:3**, **9:16**, **16:9**, **3:2**, và **Gốc (cắt sát)**.
+- Chỉnh **lề 0–25%**, **độ nhạy tìm sản phẩm**. Khung được tính riêng cho từng ảnh.
+- Bấm **Chỉnh khung thủ công** trên ảnh đang xem rồi kéo khung hoặc các nút góc trên điện thoại và máy tính. Lưu chỉ áp dụng ảnh đang chọn; các ảnh còn lại vẫn cắt tự động.
+- Khung áp dụng đồng nhất trong preview, tính MB sau chỉnh sửa và xuất từng file; **không vẽ đường khung vào ảnh xuất**. Ảnh gốc không bị ghi đè.
+- Nếu tắt ô tích, ảnh sẽ dùng toàn bộ khung ban đầu, không cắt.
+
 ## Cài trên Xiaomi / Android (PWA)
 
 - Mở bằng **Google Chrome**: https://dinhloi116-hue.github.io/image-studio/batch-editor/
@@ -47,7 +57,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.18 Xiaomi Image Decode Fix**.
+Bản hiện tại: **R20.19 Auto Crop & Manual Crop**.
 
 ### Preset tram DTF
 
