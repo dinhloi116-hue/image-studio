@@ -113,6 +113,8 @@ jobs:
           shutil.copy2(root/'batch-editor/app.js',ext/'batch-editor.js')
           shutil.copy2(root/'batch-editor/crop-core.js',ext/'crop-core.js')
           shutil.copy2(root/'batch-editor/crop-intelligence.js',ext/'crop-intelligence.js')
+          shutil.copy2(root/'batch-editor/patch-ruler.js',ext/'patch-ruler.js')
+          shutil.copy2(root/'batch-editor/auto-tone.js',ext/'auto-tone.js')
           shutil.copy2(root/'batch-editor/text-overlay.js',ext/'text-overlay.js')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
@@ -247,9 +249,13 @@ jobs:
           test -s chrome-extension/batch-editor.html
           test -s chrome-extension/crop-core.js
           test -s chrome-extension/crop-intelligence.js
+          test -s chrome-extension/patch-ruler.js
+          test -s chrome-extension/auto-tone.js
           test -s chrome-extension/text-overlay.js
           node --check chrome-extension/crop-core.js
           node --check chrome-extension/crop-intelligence.js
+          node --check chrome-extension/patch-ruler.js
+          node --check chrome-extension/auto-tone.js
           node --check chrome-extension/text-overlay.js
           node --check chrome-extension/batch-editor.js
           test -s chrome-extension/assets/ffmpeg-core.wasm
