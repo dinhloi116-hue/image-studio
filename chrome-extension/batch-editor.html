@@ -7,7 +7,7 @@
 
 
 
-<title>Chỉnh ảnh hàng loạt R20.22 | Image Studio DHL</title>
+<title>Chỉnh ảnh hàng loạt R20.23 | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
 *{box-sizing:border-box}
@@ -97,6 +97,20 @@ details[open] summary{margin-bottom:12px}
 .stepper button{min-width:42px;padding:7px}
 .canvasBox{background:#0a101b;border-radius:13px;min-height:260px;display:flex;align-items:center;justify-content:center;overflow:hidden;border:1px solid var(--line);
 background-image:linear-gradient(45deg,#162237 25%,transparent 25%),linear-gradient(-45deg,#162237 25%,transparent 25%),linear-gradient(45deg,transparent 75%,#162237 75%),linear-gradient(-45deg,transparent 75%,#162237 75%);background-size:20px 20px;background-position:0 0,0 10px,10px -10px,-10px 0}
+.previewStage{position:relative;display:inline-block;max-width:100%;line-height:0}
+#overlayHandles{position:absolute;left:0;top:0;pointer-events:none;touch-action:none;z-index:4;cursor:grab}
+#overlayHandles.overlayActive{pointer-events:auto}
+.overlayGroup{background:#142639;border:1px solid #426185;padding:13px;border-radius:12px}
+.overlayHeading{display:flex!important;align-items:center;gap:9px;color:#eff7ff;font-size:15px;font-weight:800}
+.overlayHeading input{width:21px;height:21px;accent-color:#8b5cf6;flex-shrink:0}
+.overlaySettings{display:grid;gap:11px;margin-top:12px}
+.overlaySettings input[type=file]{width:100%;max-width:100%;font-size:13px;color:#dbeafe}
+.overlayToolbar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px}
+.overlayToolbar button{min-width:0;font-size:12px;padding:7px 5px;white-space:normal}
+.overlaySmall{color:#acc7e7;font-size:12px;margin:0}
+.overlayScope{display:flex!important;align-items:center;gap:9px;font-size:13px;color:#c9def5}
+.overlayScope input{width:19px;height:19px;accent-color:#8b5cf6}
+.overlayStatus{font-size:12px;color:#c5f1d8}
 #preview{display:block;max-width:100%;max-height:min(65vh,760px);width:auto;height:auto;object-fit:contain}
 #fileSelect{max-width:100%}
 .exportArea{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:14px}
@@ -125,7 +139,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 </head>
 <body>
 <header class="top">
-  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.22 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
+  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.23 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
   <button id="goBack" type="button">← Về Image Studio</button>
 </header>
 <main class="shell">
@@ -141,6 +155,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
       <a class="wmJump" href="#wmSection">✍ Watermark chữ</a>
       <a class="wmJump" href="#cropSection">✂ Auto Crop</a>
       <a class="wmJump" href="#textSection">T Chèn chữ</a>
+      <a class="wmJump" href="#imageOverlaySection">▣ Chèn ảnh đè</a>
       <span id="count" class="count">0 ảnh</span>
     </div>
   </section>
@@ -150,7 +165,10 @@ progress{width:100%;height:12px;accent-color:var(--green)}
         <div class="info"><strong id="fileName">Chưa chọn ảnh</strong><small id="previewNote">Chọn ảnh để xem trước</small></div>
         <div class="stepper"><button id="previous" type="button" aria-label="Ảnh trước" disabled>‹</button><span id="position">0 / 0</span><button id="next" type="button" aria-label="Ảnh sau" disabled>›</button></div>
       </div>
-      <div class="canvasBox"><canvas id="preview" width="1" height="1" aria-label="Xem trước ảnh đã chỉnh"></canvas></div>
+      <div class="canvasBox"><div class="previewStage" id="previewStage">
+        <canvas id="preview" width="1" height="1" aria-label="Xem trước ảnh đã chỉnh"></canvas>
+        <canvas id="overlayHandles" width="1" height="1" aria-label="Kéo, xoay, phóng to lớp ảnh đè"></canvas>
+      </div></div>
       <section id="cropEditorPanel" class="cropEditorPanel" hidden aria-label="Chỉnh khung cắt trên ảnh">
         <strong>✂ Chỉnh khung cắt của ảnh đang chọn</strong>
         <p id="cropEditorHint">Kéo bên trong khung để di chuyển. Kéo góc xanh để phóng to / thu nhỏ khung. Ấn Áp dụng để chỉ sửa ảnh đang chọn.</p>
@@ -310,8 +328,48 @@ progress{width:100%;height:12px;accent-color:var(--green)}
           <p class="helper" id="textStatus">Chạm hoặc kéo trên ảnh xem trước để đặt chữ. Các thay đổi áp dụng cùng lúc cho mọi ảnh.</p>
         </div>
       </div>
+      <div class="group overlayGroup" id="imageOverlaySection">
+        <label class="overlayHeading" for="overlayEnabled">
+          <input id="overlayEnabled" type="checkbox">
+          <span>4. CHÈN ẢNH ĐÈ — che logo / dán thiết kế</span>
+        </label>
+        <p class="overlaySmall">Tải PNG, JPG hoặc WebP từ máy; mỗi ảnh có thể chèn nhiều logo. Ảnh đè có thể kéo, đổi kích thước, xoay góc như Canva. Độ mờ mặc định 100%.</p>
+        <div id="overlaySettings" class="overlaySettings" hidden>
+          <label for="overlayFile">Thêm hình ảnh lên ảnh đang xem
+            <input id="overlayFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple>
+          </label>
+          <label class="overlayScope" for="overlayApplyAll">
+            <input type="checkbox" id="overlayApplyAll">
+            Áp dụng lớp mới lên tất cả ảnh (mặc định: chỉ ảnh đang xem)
+          </label>
+          <label for="overlayLayerPicker">Chọn lớp ảnh đè
+            <select id="overlayLayerPicker">
+              <option value="">Chưa thêm lớp ảnh</option>
+            </select>
+          </label>
+          <div class="overlayToolbar">
+            <button type="button" id="overlayCopy">Copy • Ctrl+C</button>
+            <button type="button" id="overlayPaste">Dán • Ctrl+V</button>
+            <button type="button" id="overlayDuplicate">Nhân bản</button>
+            <button type="button" id="overlayDelete">Xóa lớp</button>
+            <button type="button" id="overlayForward">Đưa lên trên</button>
+            <button type="button" id="overlayBackward">Đưa xuống dưới</button>
+          </div>
+          <div class="range"><div><label for="overlayOpacity">Độ mờ / độ hiển thị</label><output id="overlayOpacityValue">100%</output></div>
+            <input id="overlayOpacity" type="range" min="0" max="100" step="1" value="100">
+          </div>
+          <div class="range"><div><label for="overlayWidth">Chiều rộng lớp ảnh</label><output id="overlayWidthValue">42%</output></div>
+            <input id="overlayWidth" type="range" min="5" max="180" step="1" value="42">
+          </div>
+          <div class="range"><div><label for="overlayRotation">Góc xoay lớp ảnh</label><output id="overlayRotationValue">0°</output></div>
+            <input id="overlayRotation" type="range" min="-180" max="180" step="1" value="0">
+          </div>
+          <p id="overlayStatus" class="overlayStatus">Chọn một ảnh đè để kéo và chỉnh. Ctrl+C / Ctrl+V sẽ tạo thêm lớp mới; trên Xiaomi dùng hai nút Copy và Dán.</p>
+          <p class="overlaySmall">Lớp được chọn có khung tím; khung không xuất vào ảnh. Bản sao lệch nhẹ để bạn kéo đến logo tiếp theo. File gốc không bị ghi đè.</p>
+        </div>
+      </div>
       <div>
-        <h2>4. Chỉnh màu và độ nét</h2>
+        <h2>5. Chỉnh màu và độ nét</h2>
         <div class="toneBox">
           <label class="toneHead" for="autoTone"><input id="autoTone" type="checkbox" checked> Tự phân tích sáng/tối từng ảnh</label>
           <p class="toneNote">Bật mặc định: tự xử lý ảnh tối, ảnh sáng gắt và ảnh bình thường. Không cộng dồn preset “Rực và rõ” làm cháy áo trắng.</p>
@@ -338,7 +396,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
       </div>
       <div class="group">
         <details>
-          <summary>5. Chất lượng và kích thước xuất</summary>
+          <summary>6. Chất lượng và kích thước xuất</summary>
           <div class="fields">
             <label for="format">Định dạng<select id="format"><option value="auto" selected>Tự động (giữ định dạng ảnh gốc)</option><option value="image/jpeg">JPG (nhẹ, chất lượng cao)</option><option value="image/webp">WebP (nhẹ hơn, có hao hụt)</option><option value="image/png">PNG (file có thể rất nặng)</option></select></label>
             <label for="maxEdge">Kích thước<select id="maxEdge"><option value="0">Giữ nguyên ảnh gốc</option><option value="4000">Cạnh dài tối đa 4000px</option><option value="3000">Cạnh dài tối đa 3000px</option><option value="2048">Cạnh dài tối đa 2048px</option></select></label>
@@ -364,6 +422,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 <script src="patch-ruler.js"></script>
 <script src="auto-tone.js"></script>
 <script src="text-overlay.js"></script>
+<script src="image-overlay.js"></script>
 <script src="batch-editor.js"></script>
 </body>
 </html>
