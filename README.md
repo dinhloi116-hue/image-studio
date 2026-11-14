@@ -30,6 +30,14 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
+## Tối ưu hàng loạt và chèn chữ (R20.20)
+
+- Bật **Auto Crop** → **Quét & kiểm tra cả lô**. Tool phân tích ba ngưỡng màu nền, chấm điểm nhất quán và chỉ cắt sát khi đủ tin cậy. Ảnh khó nhận diện được căn an toàn và đưa vào danh sách **Ảnh cần kiểm tra**; người dùng nhấn ảnh thu nhỏ để mở chỉnh tay. Đây là thuật toán xử lý ảnh cục bộ, **không phải AI nhận dạng áo**.
+- Xem trước dạng lưới toàn bộ ảnh với nhãn **Cắt ổn / Cần xem lại / Đã chỉnh tay**. Tùy chọn lọc chỉ ảnh cần xem; có thể sửa từng ảnh mà không ảnh hưởng toàn lô.
+- **Chèn chữ** độc lập với Watermark: bật bằng checkbox riêng, nhập văn bản hoặc `{filename}`, `{index}`, `{total}`, xuống dòng. Chọn font hệ thống, màu, viền, nền sau chữ, cỡ chữ, độ mờ, lề và 9 vị trí cố định. Chạm/kéo trên preview để đặt chữ ở vị trí tùy ý, áp dụng mọi ảnh.
+- Tính MB và xuất từng file không ZIP vẫn dùng cùng crop và text overlay như preview. Ảnh gốc không bị ghi đè.
+- Trong PWA Xiaomi, các mô-đun được lưu trong Service Worker và chạy sau lần tải đầu tiên.
+
 ## Cắt ảnh tự động hàng loạt (R20.19)
 
 - Trong **Chỉnh ảnh hàng loạt**, chọn ô tích **AUTO CROP** (mặc định tắt, không tác động nếu chưa bật).
@@ -57,7 +65,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.19 Auto Crop & Manual Crop**.
+Bản hiện tại: **R20.20 Smart Crop Review & Text Overlay**.
 
 ### Preset tram DTF
 
