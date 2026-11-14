@@ -1,9 +1,9 @@
-/* Image Studio DHL - Batch Photo Editor R20.19. Opt-in batch crop and manual framing. */
+/* Image Studio DHL - Batch Photo Editor R20.20. Smart batch crop review and text overlay. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
-  const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode','cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity'];
+  const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode','cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity','textEnabled','textContent','textFont','textPosition','textColor','textOutlineColor','textBackground','textBold','textSize','textOpacity','textOutline','textMargin','textX','textY'];
   const settingsKey='dhl-image-studio-android-settings-v2';
   let installEvent=null;
   window.addEventListener('beforeinstallprompt',event=>{
@@ -71,7 +71,7 @@
       });
     }
   }
-  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, cropOverrides:new Map(), cropEditor:null, cropEditorSeq:0, totals: { originals:0, exported:0, exportCount:0 } };
+  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, cropOverrides:new Map(), cropAnalysis:new Map(), cropThumbs:new Map(), cropReviewFilter:'all', cropScanBusy:false, cropEditor:null, cropEditorSeq:0, totals: { originals:0, exported:0, exportCount:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
     shop: { exposure:14, brightness:8, contrast:8, vibrance:18, sharpness:26 },
@@ -193,7 +193,13 @@
       wmColor:el('wmColor').value, format:el('format').value,
       quality:number('quality')/100, maxEdge:number('maxEdge'), compressionMode:el('compressionMode').value,
       cropEnabled:el('cropEnabled').checked,cropRatio:el('cropRatio').value,
-      cropMode:el('cropMode').value,cropPadding:number('cropPadding'),cropSensitivity:number('cropSensitivity')
+      cropMode:el('cropMode').value,cropPadding:number('cropPadding'),cropSensitivity:number('cropSensitivity'),
+      textEnabled:el('textEnabled').checked,textContent:el('textContent').value,
+      textFont:el('textFont').value,textPosition:el('textPosition').value,
+      textColor:el('textColor').value,textOutlineColor:el('textOutlineColor').value,
+      textBackground:el('textBackground').value,textBold:el('textBold').value==='yes',
+      textSize:number('textSize'),textOpacity:number('textOpacity'),textOutline:number('textOutline'),
+      textMargin:number('textMargin'),textX:number('textX'),textY:number('textY')
     };
   }
   function formatValue(id) {
@@ -210,13 +216,21 @@
   function refreshLabels() { keys.forEach(id=>{ const node=el(id+'Value'); if(node)node.textContent=formatValue(id); }); }
 
   // Every source image gets its own crop, unless the user manually overrides it.
+  function cropSettingKey(c){return JSON.stringify([c.cropRatio,c.cropMode,c.cropPadding,c.cropSensitivity]);}
   function frameFor(img,c,file){
     if(!c.cropEnabled)return {x:0,y:0,w:1,h:1};
     if(!window.DHLCrop)throw Error('Không tải được mô-đun Auto Crop. Hãy tải lại ứng dụng.');
     const saved=file&&state.cropOverrides.get(file);
     if(saved)return saved;
     try{
-      return c.cropMode==='center'?window.DHLCrop.centered(img,c):window.DHLCrop.plan(img,c);
+      const key=cropSettingKey(c);
+      const existing=file&&state.cropAnalysis.get(file);
+      if(existing&&existing.key===key)return existing.result.rect;
+      const result=window.DHLCrop.analyze?window.DHLCrop.analyze(img,c):
+        {rect:c.cropMode==='center'?window.DHLCrop.centered(img,c):window.DHLCrop.plan(img,c),
+          confidence:.5,needsReview:true,reason:'Dùng chế độ Auto Crop cũ'};
+      if(file)state.cropAnalysis.set(file,{key,result});
+      return result.rect;
     }catch(error){
       console.warn('DHL crop fallback:',error);
       return window.DHLCrop.centered(img,c);
@@ -229,13 +243,20 @@
     const canEdit=!!file&&enabled&&!state.busy&&!state.loading;
     el('cropEdit').disabled=!canEdit;
     el('cropClearSelected').disabled=!canEdit||!state.cropOverrides.has(file);
+    el('cropScan').disabled=!canEdit||state.cropScanBusy;
+    el('cropScanReview').disabled=!canEdit||state.cropScanBusy;
+    const reviewed=[...state.cropAnalysis.values()];
+    const flagged=reviewed.filter(item=>item.result?.needsReview).length;
+    if(reviewed.length&&enabled)el('cropStatus').textContent='Đã phân tích '+reviewed.length+'/'+state.files.length+' ảnh · '+flagged+' ảnh cần xem lại. Chạm “Ảnh cần kiểm tra” để duyệt nhanh.';
     el('cropPaddingValue').textContent=el('cropPadding').value+'%';
     el('cropSensitivityValue').textContent=el('cropSensitivity').value+'%';
-    el('cropStatus').textContent=!enabled
-      ?'Auto Crop đang tắt, ảnh xuất giữ nguyên bố cục gốc.'
-      :!file?'Chọn ít nhất một ảnh để tự căn hoặc chỉnh khung.'
-      :state.cropOverrides.has(file)?'Ảnh này dùng khung chỉnh tay; ảnh khác vẫn được Auto Crop riêng.'
-      :'Đang tự căn theo từng ảnh. Bấm “Chỉnh khung thủ công” nếu cần dịch hoặc thu phóng riêng ảnh này.';
+    if(!reviewed.length||!enabled){
+      el('cropStatus').textContent=!enabled
+        ?'Auto Crop đang tắt, ảnh xuất giữ nguyên bố cục gốc.'
+        :!file?'Chọn ít nhất một ảnh để tự căn hoặc chỉnh khung.'
+        :state.cropOverrides.has(file)?'Ảnh này dùng khung chỉnh tay; các ảnh còn lại vẫn tự căn.'
+        :'Bấm Quét & kiểm tra cả lô để tìm những ảnh cắt chưa chắc chắn.';
+    }
   }
   function closeCropEditor(){
     state.cropEditorSeq++;
@@ -342,6 +363,7 @@
   }
   function cropControlsChanged(id){
     if(id==='cropRatio')state.cropOverrides.clear();
+    if(id!=='cropEnabled')resetCropAnalysis();
     if(!el('cropEnabled').checked)closeCropEditor();
     else if(state.cropEditor)closeCropEditor();
     state.lastExportSettings=null;
@@ -523,6 +545,7 @@
       }finally {tile.width=0;tile.height=0;}
     }
     drawWatermark(ctx,w,h,c);
+    if(c.textEnabled&&window.DHLText)window.DHLText.draw(ctx,w,h,c,file,Math.max(0,state.files.indexOf(file)),Math.max(1,state.files.length));
     return canvas;
   }
   function setPreviewStatus() {
@@ -613,12 +636,12 @@
     }
   }
   async function loadFiles(list) {
-    if(state.busy||state.loading)return;
+    if(state.busy||state.loading||state.cropScanBusy)return;
     const selected=Array.from(list).filter(file=>
       /^image\/(png|jpeg|webp|heic|heif|avif)$/.test(file.type)||
       /\.(jpe?g|png|webp|heic|heif|avif)$/i.test(file.name));
     if(!selected.length){show('Không tìm thấy ảnh JPG/PNG/WebP/HEIC/AVIF.',true);return;}
-    closeCropEditor();state.cropOverrides.clear();
+    closeCropEditor();state.cropOverrides.clear();resetCropAnalysis();
     state.loading=true;
     el('selectFiles').disabled=true;
     state.importSeq++;
@@ -736,7 +759,7 @@
     throw new Error('Quá nhiều tên tệp trùng trong thư mục.');
   }
   async function exportAll(directoryHandle=null) {
-    if(state.busy||state.loading||!state.files.length)return;
+    if(state.busy||state.loading||state.cropScanBusy||!state.files.length)return;
     closeCropEditor();
     state.busy=true;state.cancel=false;state.previewSeq++;
     clearTimeout(state.sizeTimer);
@@ -862,7 +885,8 @@
       const ed=state.cropEditor;
       if(!ed)return;
       const c=config();
-      ed.box=c.cropMode==='center'?window.DHLCrop.centered(ed.img,c):window.DHLCrop.plan(ed.img,c);
+      ed.box=window.DHLCrop.analyze?window.DHLCrop.analyze(ed.img,c).rect:
+        (c.cropMode==='center'?window.DHLCrop.centered(ed.img,c):window.DHLCrop.plan(ed.img,c));
       ed.auto=true;drawCropEditor();
     });
     el('cropApply').addEventListener('click',()=>{
@@ -895,9 +919,9 @@
     updateFormatHelp();
     el('cancel').addEventListener('click',()=>{state.cancel=true;show('Đang dừng sau ảnh hiện tại…');});
     el('clear').addEventListener('click',()=>{
-      if(state.busy||state.loading)return;
+      if(state.busy||state.loading||state.cropScanBusy)return;
       disposeTempFiles();
-      closeCropEditor();state.cropOverrides.clear();
+      closeCropEditor();state.cropOverrides.clear();resetCropAnalysis();
       state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);clearTimeout(state.sizeTimer);
       state.totals={originals:0,exported:0,exportCount:0};
       state.lastExportSettings=null;
