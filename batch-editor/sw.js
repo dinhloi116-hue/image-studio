@@ -3,8 +3,8 @@
  * are never uploaded or stored in the service worker cache.
  */
 'use strict';
-const CACHE_NAME='dhl-image-studio-pwa-r20-18-xiaomi-decoder';
-const SHELL=['./','./index.html','./app.js','./manifest.webmanifest',
+const CACHE_NAME='dhl-image-studio-pwa-r20-19-batch-crop';
+const SHELL=['./','./index.html','./app.js','./crop-core.js','./manifest.webmanifest',
   './icons/icon192.png','./icons/icon512.png','./icons/icon192-maskable.png','./icons/icon512-maskable.png'];
 
 self.addEventListener('install',event=>{
