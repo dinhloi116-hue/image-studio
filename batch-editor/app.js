@@ -851,6 +851,134 @@
     }
     el('formatHelp').textContent=help;
   }
+  function resetCropAnalysis(){
+    state.cropAnalysis.clear();
+    state.cropThumbs.clear();
+    state.cropReviewFilter='all';
+    el('cropBatchReview').hidden=true;
+    el('cropThumbs').replaceChildren();
+    el('cropBatchStatus').textContent='Chưa quét ảnh.';
+  }
+  function thumbnailFor(img,rect){
+    const canvas=document.createElement('canvas');
+    canvas.width=116;canvas.height=116;
+    const cx=canvas.getContext('2d');
+    cx.fillStyle='#1c2b3c';cx.fillRect(0,0,116,116);
+    const [sw,sh]=imageDims(img);
+    const rw=rect.w*sw,rh=rect.h*sh;
+    const zoom=Math.min(114/rw,114/rh);
+    const dw=Math.max(1,rw*zoom),dh=Math.max(1,rh*zoom);
+    cx.drawImage(img,rect.x*sw,rect.y*sh,rw,rh,(116-dw)/2,(116-dh)/2,dw,dh);
+    const url=canvas.toDataURL('image/jpeg',.78);
+    canvas.width=0;canvas.height=0;
+    return url;
+  }
+  function cropReviewList(){
+    const parent=el('cropThumbs');
+    parent.replaceChildren();
+    const files=state.files;
+    const entries=files.map((file,index)=>({
+      file,index,check:state.cropAnalysis.get(file)?.result,
+      manual:state.cropOverrides.has(file)
+    }));
+    const flagged=entries.filter(x=>x.check?.needsReview&&!x.manual);
+    el('cropBatchStatus').textContent='Đã quét '+entries.filter(x=>x.check).length+'/'+files.length+
+      ' ảnh • '+flagged.length+' cần kiểm tra • '+entries.filter(x=>x.manual).length+' đã chỉnh tay';
+    const visible=state.cropReviewFilter==='warnings'?flagged:entries.filter(x=>x.check);
+    if(!visible.length){
+      const p=document.createElement('p');
+      p.className='helper';
+      p.textContent=state.cropReviewFilter==='warnings'?'Không có ảnh nào cần kiểm tra thêm.':'Hãy bấm Quét cả lô.';
+      parent.appendChild(p);return;
+    }
+    for(const item of visible){
+      const b=document.createElement('button');
+      b.type='button';b.className='cropThumb'+(state.index===item.index?' selected':'');
+      b.title=item.file.name+' • '+(item.manual?'Đã chỉnh tay':item.check?.reason||'Đã quét');
+      const img=document.createElement('img');
+      img.alt='Khung cắt dự kiến cho '+item.file.name;
+      img.loading='lazy';img.src=state.cropThumbs.get(item.file)||'';
+      const name=document.createElement('span');
+      name.className='cropName';name.textContent=(item.index+1)+'. '+item.file.name;
+      const flag=document.createElement('span');
+      flag.className='cropFlag'+(item.check?.needsReview&&!item.manual?' review':'');
+      flag.textContent=item.manual?'✓ Đã chỉnh tay':item.check?.needsReview?'⚠ Cần xem lại':'✓ Cắt ổn';
+      b.append(img,name,flag);
+      b.addEventListener('click',()=>{
+        closeCropEditor();state.index=item.index;setPreviewStatus();
+        if(item.check?.needsReview&&!state.cropOverrides.has(item.file)){
+          openCropEditor();
+        }else{
+          schedulePreview();
+          el('preview').scrollIntoView({behavior:'smooth',block:'center'});
+        }
+      });
+      parent.appendChild(b);
+    }
+  }
+  async function scanAllCrops(showWarnings=false){
+    if(state.loading||state.busy||state.cropScanBusy||!el('cropEnabled').checked||!state.files.length)return;
+    state.cropScanBusy=true;
+    state.cropReviewFilter=showWarnings?'warnings':'all';
+    el('cropBatchReview').hidden=false;
+    el('cropBatchStatus').textContent='Đang phân tích ảnh…';
+    el('cropThumbs').replaceChildren();
+    el('cropScan').disabled=true;el('cropScanReview').disabled=true;
+    el('download').disabled=true;el('clear').disabled=true;
+    const files=state.files.slice(),c=config(),key=cropSettingKey(c);
+    try{
+      for(let i=0;i<files.length;i++){
+        let img;
+        try{
+          img=await decode(files[i]);
+          let item=state.cropAnalysis.get(files[i]);
+          if(!item||item.key!==key){
+            item={key,result:window.DHLCrop.analyze(img,c)};
+            state.cropAnalysis.set(files[i],item);
+          }
+          const box=state.cropOverrides.get(files[i])||item.result.rect;
+          state.cropThumbs.set(files[i],thumbnailFor(img,box));
+        }catch(error){
+          state.cropAnalysis.set(files[i],{key,result:{
+            rect:{x:0,y:0,w:1,h:1},needsReview:true,confidence:0,
+            reason:'Không thể đọc ảnh: '+error.message}});
+        }finally{release(img);}
+        el('cropBatchStatus').textContent='Đang quét '+(i+1)+'/'+files.length+' ảnh…';
+        if(i%3===0)await new Promise(resolve=>setTimeout(resolve,0));
+      }
+    }finally{
+      state.cropScanBusy=false;
+      setPreviewStatus();
+      cropReviewList();
+      el('cropBatchReview').hidden=false;
+      el('cropBatchReview').scrollIntoView({behavior:'smooth',block:'start'});
+      schedulePreview();
+    }
+  }
+  function updateTextControls(){
+    const active=el('textEnabled').checked;
+    el('textSettings').hidden=!active;
+    el('textCoords').hidden=!active||el('textPosition').value!=='custom';
+    el('preview').classList.toggle('text-edit',active);
+    for(const id of ['textSize','textOpacity','textOutline','textMargin']){
+      const out=el(id+'Value');
+      out.textContent=el(id).value+(id==='textOutline'?'':'%');
+    }
+    el('textStatus').textContent=active
+      ?'Chạm vào ảnh xem trước để chọn vị trí tùy ý. Chữ sẽ áp dụng trên tất cả ảnh.'
+      :'Chức năng chèn chữ đang tắt.';
+  }
+  function moveTextAtPointer(event){
+    if(!el('textEnabled').checked||state.loading||state.busy||!state.files.length)return;
+    if(event.type==='pointermove'&&!event.buttons)return;
+    const box=el('preview').getBoundingClientRect();
+    if(!box.width||!box.height)return;
+    el('textPosition').value='custom';
+    el('textX').value=String(Math.max(0,Math.min(100,Math.round((event.clientX-box.left)/box.width*100))));
+    el('textY').value=String(Math.max(0,Math.min(100,Math.round((event.clientY-box.top)/box.height*100))));
+    updateTextControls();storeSettings();schedulePreview();
+    event.preventDefault();
+  }
   function updatePresetSelection() {
     const selected=Object.entries(presets).find(([,values])=>
       Object.entries(values).every(([id,value])=>Number(el(id).value)===value))?.[0];
