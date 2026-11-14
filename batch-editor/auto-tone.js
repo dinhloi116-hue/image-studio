@@ -51,9 +51,9 @@ function adaptiveConfig(base,a){
   return {...base,
     // Override the old fixed 'vivid' controls. Otherwise a +EV
     // shop preset can re-burn an already overexposed white jersey.
-    exposure:bright?-.045:dark?.11:0,
-    brightness:bright?-1:dark?4:1,
-    contrast:bright?3:dark?5:5,
+    exposure:bright?-.01:dark?.11:0,
+    brightness:bright?0:dark?4:1,
+    contrast:bright?2:dark?5:5,
     vibrance:bright?5:dark?8:8,
     sharpness:bright?16:dark?17:18,
     highlightRecover:(Number(base.toneHighlights)||0)*(bright?1:dark?.24:.46),
