@@ -107,6 +107,7 @@ jobs:
           batch_html=batch_html.replace('<link rel="apple-touch-icon" href="icons/icon192.png">','')
           (ext/'batch-editor.html').write_text(batch_html,encoding='utf-8')
           shutil.copy2(root/'batch-editor/app.js',ext/'batch-editor.js')
+          shutil.copy2(root/'batch-editor/crop-core.js',ext/'crop-core.js')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
           for name in ['video-compressor-r199.js','video-compressor-core-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js','image-sizing-r207.js']:
@@ -238,6 +239,9 @@ jobs:
           PY_ICONS
           test -s chrome-extension/tool.html
           test -s chrome-extension/batch-editor.html
+          test -s chrome-extension/crop-core.js
+          node --check chrome-extension/crop-core.js
+          node --check chrome-extension/batch-editor.js
           test -s chrome-extension/assets/ffmpeg-core.wasm
           test $(stat -c%s chrome-extension/assets/ffmpeg-core.wasm) -gt 20000000
 
