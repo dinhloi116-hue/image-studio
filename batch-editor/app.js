@@ -1,9 +1,9 @@
-/* Image Studio DHL - Batch Photo Editor R20.21. Never skip output solely for size. */
+/* Image Studio DHL - Batch Photo Editor R20.22. Patch ruler crop and adaptive toning. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
-  const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode','cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity','textEnabled','textContent','textFont','textPosition','textColor','textOutlineColor','textBackground','textBold','textSize','textOpacity','textOutline','textMargin','textX','textY'];
+  const savedSettingIds = [...keys,'cropPatchKeepLeft','cropPatchKeepBottom','cropPatchRemoveCaption','autoTone','toneHighlights','toneShadows','toneClarity','wmText','wmMode','wmColor','format','maxEdge','compressionMode','cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity','textEnabled','textContent','textFont','textPosition','textColor','textOutlineColor','textBackground','textBold','textSize','textOpacity','textOutline','textMargin','textX','textY'];
   const settingsKey='dhl-image-studio-android-settings-v2';
   let installEvent=null;
   window.addEventListener('beforeinstallprompt',event=>{
@@ -194,6 +194,8 @@
       quality:number('quality')/100, maxEdge:number('maxEdge'), compressionMode:el('compressionMode').value,
       cropEnabled:el('cropEnabled').checked,cropRatio:el('cropRatio').value,
       cropMode:el('cropMode').value,cropPadding:number('cropPadding'),cropSensitivity:number('cropSensitivity'),
+      cropPatchKeepLeft:el('cropPatchKeepLeft').checked,cropPatchKeepBottom:el('cropPatchKeepBottom').checked,
+      cropPatchRemoveCaption:el('cropPatchRemoveCaption').checked,
       textEnabled:el('textEnabled').checked,textContent:el('textContent').value,
       textFont:el('textFont').value,textPosition:el('textPosition').value,
       textColor:el('textColor').value,textOutlineColor:el('textOutlineColor').value,
@@ -216,7 +218,17 @@
   function refreshLabels() { keys.forEach(id=>{ const node=el(id+'Value'); if(node)node.textContent=formatValue(id); }); }
 
   // Every source image gets its own crop, unless the user manually overrides it.
-  function cropSettingKey(c){return JSON.stringify([c.cropRatio,c.cropMode,c.cropPadding,c.cropSensitivity]);}
+  function cropSettingKey(c){return JSON.stringify([c.cropRatio,c.cropMode,c.cropPadding,c.cropSensitivity,
+    c.cropPatchKeepLeft,c.cropPatchKeepBottom,c.cropPatchRemoveCaption]);}
+  function analyzeFrame(img,c){
+    if(c.cropMode==='patch_ruler'){
+      if(!window.DHLPatchCrop)throw Error('Chưa tải mô-đun Patch có thước, hãy tải lại trang.');
+      return window.DHLPatchCrop.analyze(img,c);
+    }
+    return window.DHLCrop.analyze?window.DHLCrop.analyze(img,c):
+      {rect:c.cropMode==='center'?window.DHLCrop.centered(img,c):window.DHLCrop.plan(img,c),
+        needsReview:true,confidence:.3,reason:'Chưa phân tích đầy đủ'};
+  }
   function frameFor(img,c,file){
     if(!c.cropEnabled)return {x:0,y:0,w:1,h:1};
     if(!window.DHLCrop)throw Error('Không tải được mô-đun Auto Crop. Hãy tải lại ứng dụng.');
@@ -226,9 +238,7 @@
       const key=cropSettingKey(c);
       const existing=file&&state.cropAnalysis.get(file);
       if(existing&&existing.key===key)return existing.result.rect;
-      const result=window.DHLCrop.analyze?window.DHLCrop.analyze(img,c):
-        {rect:c.cropMode==='center'?window.DHLCrop.centered(img,c):window.DHLCrop.plan(img,c),
-          confidence:.5,needsReview:true,reason:'Dùng chế độ Auto Crop cũ'};
+      const result=analyzeFrame(img,c);
       if(file)state.cropAnalysis.set(file,{key,result});
       return result.rect;
     }catch(error){
@@ -239,6 +249,11 @@
   function updateCropControls(){
     const enabled=el('cropEnabled').checked;
     el('cropSettings').hidden=!enabled;
+    const patch=enabled&&el('cropMode').value==='patch_ruler';
+    el('patchCropSettings').hidden=!patch;
+    el('cropRatio').disabled=patch;
+    el('cropPadding').parentElement.hidden=patch;
+    el('cropSensitivity').parentElement.hidden=patch;
     const file=state.files[state.index];
     const canEdit=!!file&&enabled&&!state.busy&&!state.loading&&!state.cropScanBusy;
     el('cropEdit').disabled=!canEdit;
@@ -363,8 +378,9 @@
     try{el('cropEditor').releasePointerCapture?.(event.pointerId);}catch(_){}
   }
   function cropControlsChanged(id){
-    if(id==='cropRatio')state.cropOverrides.clear();
-    if(id!=='cropEnabled')resetCropAnalysis();
+    if(id==='cropMode'&&el('cropMode').value==='patch_ruler')el('cropRatio').value='1:1';
+    if(id==='cropRatio'||id==='cropMode')state.cropOverrides.clear();
+    if(id!=='cropEnabled'){resetCropAnalysis();state.toneAnalysis?.clear();}
     if(!el('cropEnabled').checked)closeCropEditor();
     else if(state.cropEditor)closeCropEditor();
     state.lastExportSettings=null;
@@ -973,7 +989,7 @@
           img=await decode(files[i]);
           let item=state.cropAnalysis.get(files[i]);
           if(!item||item.key!==key){
-            item={key,result:window.DHLCrop.analyze(img,c)};
+            item={key,result:analyzeFrame(img,c)};
             state.cropAnalysis.set(files[i],item);
           }
           const box=state.cropOverrides.get(files[i])||item.result.rect;
@@ -1043,7 +1059,7 @@
       el(id).addEventListener('input',()=>{storeSettings();schedulePreview();});el(id).addEventListener('change',()=>{storeSettings();schedulePreview();});
     });
     document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
-    for(const id of ['cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity']){
+    for(const id of ['cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity','cropPatchKeepLeft','cropPatchKeepBottom','cropPatchRemoveCaption']){
       const node=el(id);
       node.addEventListener('input',()=>cropControlsChanged(id));
       if(node.tagName==='SELECT')node.addEventListener('change',()=>cropControlsChanged(id));
@@ -1054,8 +1070,7 @@
       const ed=state.cropEditor;
       if(!ed)return;
       const c=config();
-      ed.box=window.DHLCrop.analyze?window.DHLCrop.analyze(ed.img,c).rect:
-        (c.cropMode==='center'?window.DHLCrop.centered(ed.img,c):window.DHLCrop.plan(ed.img,c));
+      ed.box=analyzeFrame(ed.img,c).rect;
       ed.auto=true;drawCropEditor();
     });
     el('cropApply').addEventListener('click',()=>{
