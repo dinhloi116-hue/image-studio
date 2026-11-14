@@ -26,6 +26,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: image-studio-local-extension-main
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
