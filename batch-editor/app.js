@@ -614,6 +614,7 @@
       /^image\/(png|jpeg|webp|heic|heif|avif)$/.test(file.type)||
       /\.(jpe?g|png|webp|heic|heif|avif)$/i.test(file.name));
     if(!selected.length){show('Không tìm thấy ảnh JPG/PNG/WebP/HEIC/AVIF.',true);return;}
+    closeCropEditor();state.cropOverrides.clear();
     state.loading=true;
     el('selectFiles').disabled=true;
     state.importSeq++;
@@ -732,6 +733,7 @@
   }
   async function exportAll(directoryHandle=null) {
     if(state.busy||state.loading||!state.files.length)return;
+    closeCropEditor();
     state.busy=true;state.cancel=false;state.previewSeq++;
     clearTimeout(state.sizeTimer);
     const c=config();
@@ -845,10 +847,42 @@
       el(id).addEventListener('input',()=>{storeSettings();schedulePreview();});el(id).addEventListener('change',()=>{storeSettings();schedulePreview();});
     });
     document.querySelectorAll('[data-preset]').forEach(b=>b.addEventListener('click',()=>applyPreset(b.dataset.preset)));
+    for(const id of ['cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity']){
+      const node=el(id);
+      node.addEventListener('input',()=>cropControlsChanged(id));
+      if(node.tagName==='SELECT')node.addEventListener('change',()=>cropControlsChanged(id));
+    }
+    el('cropEdit').addEventListener('click',openCropEditor);
+    el('cropCancel').addEventListener('click',closeCropEditor);
+    el('cropReset').addEventListener('click',()=>{
+      const ed=state.cropEditor;
+      if(!ed)return;
+      const c=config();
+      ed.box=c.cropMode==='center'?window.DHLCrop.centered(ed.img,c):window.DHLCrop.plan(ed.img,c);
+      ed.auto=true;drawCropEditor();
+    });
+    el('cropApply').addEventListener('click',()=>{
+      const ed=state.cropEditor;if(!ed)return;
+      if(ed.auto)state.cropOverrides.delete(ed.file);
+      else state.cropOverrides.set(ed.file,{...ed.box});
+      state.lastExportSettings=null;
+      closeCropEditor();updateCropControls();schedulePreview();
+    });
+    el('cropClearSelected').addEventListener('click',()=>{
+      const file=state.files[state.index];
+      if(!file)return;
+      state.cropOverrides.delete(file);
+      state.lastExportSettings=null;closeCropEditor();updateCropControls();schedulePreview();
+    });
+    el('cropEditor').addEventListener('pointerdown',startCropDrag);
+    el('cropEditor').addEventListener('pointermove',moveCropDrag);
+    el('cropEditor').addEventListener('pointerup',finishCropDrag);
+    el('cropEditor').addEventListener('pointercancel',finishCropDrag);
+
     el('selectFiles').addEventListener('change',async e=>{const files=Array.from(e.target.files);try{await loadFiles(files);}finally{e.target.value='';}});
-    el('previous').addEventListener('click',()=>{if(state.index>0){state.index--;setPreviewStatus();schedulePreview();}});
-    el('next').addEventListener('click',()=>{if(state.index<state.files.length-1){state.index++;setPreviewStatus();schedulePreview();}});
-    el('fileSelect').addEventListener('change',e=>{state.index=Number(e.target.value);setPreviewStatus();schedulePreview();});
+    el('previous').addEventListener('click',()=>{if(state.index>0){closeCropEditor();state.index--;setPreviewStatus();schedulePreview();}});
+    el('next').addEventListener('click',()=>{if(state.index<state.files.length-1){closeCropEditor();state.index++;setPreviewStatus();schedulePreview();}});
+    el('fileSelect').addEventListener('change',e=>{closeCropEditor();state.index=Number(e.target.value);setPreviewStatus();schedulePreview();});
     el('download').addEventListener('click',()=>exportAll());
     el('saveFolder').addEventListener('click',saveToFolder);
     el('saveFolder').hidden=typeof window.showDirectoryPicker!=='function';
@@ -859,6 +893,7 @@
     el('clear').addEventListener('click',()=>{
       if(state.busy||state.loading)return;
       disposeTempFiles();
+      closeCropEditor();state.cropOverrides.clear();
       state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);clearTimeout(state.sizeTimer);
       state.totals={originals:0,exported:0,exportCount:0};
       state.lastExportSettings=null;
@@ -874,6 +909,7 @@
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');loadFiles(e.dataTransfer.files);});
     el('goBack').addEventListener('click',()=>{if(history.length>1)history.back();else location.href=location.protocol==='chrome-extension:'?'tool.html':'../direct/';});
     refreshLabels();updatePresetSelection();setPreviewStatus();
+    updateCropControls();
     clearOldTempFiles();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
