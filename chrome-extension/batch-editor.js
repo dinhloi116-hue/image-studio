@@ -501,6 +501,26 @@
     }
     ctx.restore();
   }
+  function sampleBackgroundColor(img,sw,sh){
+    let canvas;
+    try{
+      canvas=document.createElement('canvas');
+      canvas.width=4;canvas.height=1;
+      const ctx=canvas.getContext('2d',{willReadFrequently:true});
+      const side=Math.max(1,Math.floor(Math.min(sw,sh)*.035));
+      const samples=[[0,0],[Math.max(0,sw-side),0],
+        [0,Math.max(0,sh-side)],[Math.max(0,sw-side),Math.max(0,sh-side)]];
+      for(let i=0;i<4;i++){
+        const p=samples[i];
+        ctx.drawImage(img,p[0],p[1],side,side,i,0,1,1);
+      }
+      const pixels=ctx.getImageData(0,0,4,1).data;
+      const rgb=[0,0,0];
+      for(let i=0;i<4;i++)for(let ch=0;ch<3;ch++)rgb[ch]+=pixels[i*4+ch]/4;
+      return 'rgb('+rgb.map(n=>Math.round(n)).join(',')+')';
+    }catch(_){return '#303842';}
+    finally{if(canvas){canvas.width=0;canvas.height=0;}}
+  }
   function renderImage(img,c,preview,file) {
     const [sw,sh]=imageDims(img);
     if(!sw||!sh) throw new Error('Ảnh không có kích thước hợp lệ');
@@ -524,7 +544,7 @@
     if(!ctx) throw new Error('Trình duyệt không hỗ trợ Canvas');
     const hasAdjustments=!!(c.exposure||c.brightness||c.contrast||c.vibrance||c.sharpness);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
-    if(aspect&&c.format!=='image/png'){ctx.fillStyle='#303842';ctx.fillRect(0,0,w,h);}
+    if(aspect&&c.format!=='image/png'){ctx.fillStyle=sampleBackgroundColor(img,sw,sh);ctx.fillRect(0,0,w,h);}
     else if(c.format==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);}
     if(!hasAdjustments){
       ctx.drawImage(img,sx,sy,srcW,srcH,ox,oy,dw,dh);
