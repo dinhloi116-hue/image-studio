@@ -30,7 +30,8 @@
     const candidates=values.map(v=>crop.autoBounds(image,v));
     const valid=candidates.filter(x=>x.confidence>0&&x.w<.975&&x.h<.975);
     if(!valid.length){
-      return {rect:crop.centered(image,options),confidence:0,needsReview:true,
+      const padAspect=crop.ratios[ratio]||null;
+      return {rect:{x:0,y:0,w:1,h:1,padAspect},confidence:0,needsReview:true,
         reason:'Nền khó phân biệt với sản phẩm — dùng khung giữa an toàn',method:'fallback'};
     }
     // Stable regions across three sensitivity settings are more dependable
@@ -47,7 +48,7 @@
     // A low-confidence image gets no aggressive crop. The customer can
     // inspect this image in the review gallery instead of losing fabric edges.
     const candidate=needsReview?
-      crop.centered(image,options):
+      {x:0,y:0,w:1,h:1,padAspect:crop.ratios[ratio]||null}:
       crop.fitRect(middle,sw,sh,crop.ratios[ratio]||null,options.cropPadding||0);
     const target=crop.ratios[ratio];
     const rect=candidate;
@@ -55,8 +56,10 @@
       rect.x+rect.w>=middle.x+middle.w-.025 &&
       rect.y+rect.h>=middle.y+middle.h-.025;
     const status=needsReview?'Cần xem lại':contains?'Cắt ổn':'Kiểm tra mép áo';
-    return {rect,confidence:Math.round(confidence*100)/100,
-      needsReview:needsReview||!contains,
+    const risky=!needsReview&&!contains;
+    const safeRect=risky?{x:0,y:0,w:1,h:1,padAspect:crop.ratios[ratio]||null}:rect;
+    return {rect:safeRect,confidence:Math.round(confidence*100)/100,
+      needsReview:needsReview||risky,
       reason:status,method:needsReview?'fallback':'detected',
       detection:middle,agreement:Math.round(agreement*100)/100};
   }
