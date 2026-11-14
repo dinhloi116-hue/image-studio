@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon192.png">
 <link rel="apple-touch-icon" href="icons/icon192.png">
-<title>Chỉnh ảnh hàng loạt R20.20 | Image Studio DHL</title>
+<title>Chỉnh ảnh hàng loạt R20.21 | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
 *{box-sizing:border-box}
@@ -118,7 +118,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 </head>
 <body>
 <header class="top">
-  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.20 • Auto Crop thông minh + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
+  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.21 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
   <button id="goBack" type="button">← Về Image Studio</button>
 </header>
 <main class="shell">
@@ -172,7 +172,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
           <div class="sizeStat"><span>Tất cả ảnh • Tổng gốc</span><strong id="totalBeforeMB">0.00 MB</strong></div>
           <div class="sizeStat"><span>Tất cả ảnh • Sau xử lý</span><strong id="totalAfterMB">Chưa có số liệu</strong></div>
         </div>
-        <p class="sizeHint">Dung lượng được đo bằng file xuất thử thực tế. Nếu không thể giảm MB ở chất lượng cao, tool báo rõ và không xuất ảnh đó. Tổng trước khi tải chỉ là ước tính.</p>
+        <p class="sizeHint">Dung lượng được đo bằng ảnh xuất thử thực tế. Nếu không giảm được MB ở chất lượng cao, tool vẫn xuất và hiển thị cảnh báo tăng dung lượng. Tổng trước khi tải chỉ là ước tính.</p>
         <div class="actionRow">
           <button id="download" class="export" type="button" disabled>↓ Tải tất cả ảnh (không ZIP)</button>
           <button id="saveFolder" type="button" hidden disabled>📁 Lưu vào thư mục</button>
@@ -320,16 +320,16 @@ progress{width:100%;height:12px;accent-color:var(--green)}
           <label class="full" for="compressionMode" style="display:grid;gap:6px;margin:10px 0">
             <strong>Ưu tiên dung lượng</strong>
             <select id="compressionMode">
-              <option value="under" selected>Giảm MB, giữ chất lượng thị giác cao (mặc định)</option>
+              <option value="under" selected>Cố gắng giảm MB, luôn xuất ảnh đã chỉnh (mặc định)</option>
               <option value="best">Ưu tiên chất lượng tối đa (có thể tăng MB)</option>
             </select>
           </label>
           <div class="range" id="qualityRow"><div><label for="quality">Chất lượng cao nhất JPG/WebP</label><output id="qualityValue"></output></div><input id="quality" type="range" min="92" max="98" step="1" value="96"></div>
           <p class="helper" id="formatHelp">Mặc định giữ JPG → JPG, PNG → PNG, WebP → WebP để tránh tăng dung lượng bất thường. Mức chất lượng cao áp dụng cho JPG/WebP.</p>
-          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL) và độ phân giải nếu chọn giữ nguyên. Giữ nguyên định dạng và độ phân giải. Chế độ giảm MB tự tìm mức nén cao nhất có thể mà vẫn nhỏ hơn ảnh gốc; không đạt mức chất lượng tối thiểu thì báo lỗi thay vì xuất ảnh nặng hơn.</p>
+          <p class="helper">Ảnh xuất giữ nguyên tên (thêm _DHL) và độ phân giải nếu chọn giữ nguyên. Giữ nguyên định dạng và độ phân giải. Tool tìm mức nén tốt nhất từ 92–98%; nếu ảnh gốc đã nén tốt thì vẫn xuất ở 92% và báo rõ dung lượng tăng, không tự hạ chất lượng quá mức.</p>
         </details>
       </div>
-      <p class="privacy">Không dùng AI dựng lại ảnh, không ghi đè ảnh gốc. Không thể vừa chỉnh màu/watermark, vừa bảo toàn mọi pixel JPG và luôn giảm MB. Chế độ mặc định ưu tiên chất lượng nhìn cao, tự giới hạn dung lượng và bỏ qua ảnh không đạt; không tự hạ mức nén dưới 92%. PNG giữ pixel sau chỉnh nhưng có thể không giảm được dung lượng. Với ảnh rất lớn, nên chia lô để tránh hết bộ nhớ trên điện thoại.</p>
+      <p class="privacy">Không dùng AI dựng lại ảnh, không ghi đè ảnh gốc. Không thể vừa chỉnh màu/watermark, vừa bảo toàn mọi pixel JPG và luôn giảm MB. Chế độ mặc định cố giảm MB, nhưng không bỏ qua ảnh chỉ vì khó nén; vẫn xuất ở chất lượng tối thiểu 92% và báo trước nếu dung lượng tăng. PNG giữ pixel sau chỉnh nhưng có thể không giảm được dung lượng. Với ảnh rất lớn, nên chia lô để tránh hết bộ nhớ trên điện thoại.</p>
     </aside>
   </div>
 </main>
