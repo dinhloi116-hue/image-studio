@@ -3,8 +3,8 @@
  * are never uploaded or stored in the service worker cache.
  */
 'use strict';
-const CACHE_NAME='dhl-image-studio-pwa-r20-21-export-fallback';
-const SHELL=['./','./index.html','./app.js','./crop-core.js','./crop-intelligence.js','./text-overlay.js','./manifest.webmanifest',
+const CACHE_NAME='dhl-image-studio-pwa-r20-22-patch-tone';
+const SHELL=['./','./index.html','./app.js','./crop-core.js','./crop-intelligence.js','./patch-ruler.js','./auto-tone.js','./text-overlay.js','./manifest.webmanifest',
   './icons/icon192.png','./icons/icon512.png','./icons/icon192-maskable.png','./icons/icon512-maskable.png'];
 
 self.addEventListener('install',event=>{
