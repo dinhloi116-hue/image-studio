@@ -1,4 +1,4 @@
-/* Image Studio DHL - Batch Photo Editor R20.20. Smart batch crop review and text overlay. */
+/* Image Studio DHL - Batch Photo Editor R20.21. Never skip output solely for size. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
@@ -631,7 +631,7 @@
       img=await decode(file);
       if(id!==state.previewSeq || state.busy) return;
       canvas=renderImage(img,c,false,file);
-      const {blob,quality}=await encodeForExport(canvas,c,file);
+      const {blob,quality,warning}=await encodeForExport(canvas,c,file);
       if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ kiểu ảnh này');
       if(id!==state.previewSeq || state.busy) return;
       const estimate=state.totals.originals*blob.size/Math.max(1,file.size);
@@ -639,7 +639,9 @@
       el('outputMB').textContent=mb(blob.size)+' ('+outputExtension(c.format).toUpperCase()+')';
       const difference=(blob.size/file.size-1)*100;
       const change=(difference>0?'+':'')+difference.toFixed(1)+'%';
-      el('previewNote').textContent='Sau chỉnh: '+mb(blob.size)+' ('+change+' so với gốc)'+(quality!=null?' • mức nén '+Math.round(quality*100)+'%':'')+'. Tổng chỉ là ước tính từ ảnh đang xem.';
+      el('previewNote').textContent=warning?
+        '⚠ '+warning+' Tổng MB chỉ là ước tính từ ảnh đang xem.':
+        'Sau chỉnh: '+mb(blob.size)+' ('+change+' so với gốc)'+(quality!=null?' • chất lượng '+Math.round(quality*100)+'%':'')+'. Tổng chỉ là ước tính từ ảnh đang xem.';
       // Preview the actual encoded file rather than the pre-encoding canvas.
       let exportedPreview;
       try {
@@ -737,10 +739,8 @@
   async function encodeForExport(canvas,c,originalFile) {
     if(c.format==='image/png'){
       const blob=await blobFromCanvas(canvas,c);
-      if(c.compressionMode==='under' && blob.size>=originalFile.size){
-        throw new Error('PNG sau chỉnh lớn hơn ảnh gốc ('+mb(blob.size)+' > '+mb(originalFile.size)+'). Không thể vừa giảm dung lượng vừa đảm bảo lossless; có thể chọn chế độ Chất lượng tối đa để vẫn xuất.');
-      }
-      return {blob,quality:null};
+      return {blob,quality:null,warning:c.compressionMode==='under'&&blob.size>=originalFile.size?
+        'PNG sau chỉnh ('+mb(blob.size)+') lớn hơn ảnh gốc ('+mb(originalFile.size)+'). Đã giữ nguyên chất lượng PNG và vẫn xuất ảnh.':null};
     }
     if(c.compressionMode!=='under'){
       const quality=Math.min(.98,c.quality);
@@ -759,7 +759,12 @@
     if(best.blob.size<=limit)return best;
     const minimum=await encode(low);
     if(minimum.blob.size>limit){
-      throw new Error('Không thể giảm từ '+mb(minimum.blob.size)+' xuống dưới '+mb(originalFile.size)+' ở chất lượng '+Math.round(low*100)+'% trở lên. Bỏ qua ảnh này thay vì tăng dung lượng hay tự giảm chất lượng quá mức.');
+      // Previously we threw here, so an already-compressed 160 KB JPG
+      // could make an entire Xiaomi batch export zero files.
+      // Keep all edits and output the smallest high-quality candidate instead.
+      return {...minimum,warning:'Ảnh gốc đã nén tốt; sau chỉnh '+mb(minimum.blob.size)+
+        ' (gốc '+mb(originalFile.size)+'). Giữ chất lượng '+Math.round(low*100)+
+        '% và xuất ảnh, không tự hạ chất lượng thêm.'};
     }
     let lo=low,hi=high;
     best=minimum;
@@ -795,7 +800,7 @@
     state.busy=true;state.cancel=false;state.previewSeq++;
     clearTimeout(state.sizeTimer);
     const c=config();
-    const files=state.files.slice(), used=new Set(),errors=[];
+    const files=state.files.slice(), used=new Set(),errors=[],warnings=[];
     let count=0,originalTotal=0,outputTotal=0;
     state.lastExportSettings=JSON.stringify(c);
     el('download').disabled=true;el('saveFolder').disabled=true;
@@ -813,7 +818,7 @@
           const one=perFileConfig(c,files[i]);
           img=await decode(files[i]);
           canvas=renderImage(img,one,false,files[i]);
-          const {blob}=await encodeForExport(canvas,one,files[i]);
+          const {blob,warning}=await encodeForExport(canvas,one,files[i]);
           if(blob.type && blob.type!==one.format) throw new Error('Trình duyệt không hỗ trợ '+one.format);
           const filename=nameFor(files[i],outputExtension(one.format),used);
           if(directoryHandle){
@@ -826,6 +831,7 @@
             triggerDownload(blob,filename);
           }
           count++; originalTotal+=files[i].size; outputTotal+=blob.size;
+          if(warning)warnings.push(files[i].name+': '+warning);
         } catch(e) { errors.push(files[i].name+': '+e.message); }
         finally {
           release(img);
@@ -842,9 +848,11 @@
         const note=directoryHandle?'Đã lưu '+count+' ảnh trong thư mục đã chọn.':
           'Đã gửi lệnh tải '+count+' ảnh riêng lẻ. Nếu trình duyệt hỏi, hãy cho phép tải nhiều tệp.';
         show(note+' Tổng gốc (ảnh thành công): '+mb(originalTotal)+' → đầu ra: '+mb(outputTotal)+
-          (state.cancel?' (đã dừng phần còn lại)':'')+(errors.length?'. Lỗi '+errors.length+' ảnh.':''));
+          (state.cancel?' (đã dừng phần còn lại)':'')+(warnings.length?'. '+warnings.length+' ảnh tăng MB nhưng vẫn xuất.':'')+(errors.length?'. Lỗi '+errors.length+' ảnh.':''));
       }else show('Không xuất thành công ảnh nào.',true);
-      if(errors.length)el('failures').textContent='Ảnh lỗi:\n'+errors.join('\n');
+      if(errors.length||warnings.length)el('failures').textContent=
+        (errors.length?'Ảnh lỗi:\n'+errors.join('\n'):'')+
+        (warnings.length?(errors.length?'\n\n':'')+'LƯU Ý DUNG LƯỢNG (ảnh vẫn xuất thành công):\n'+warnings.join('\n'):'');
     } catch(e) { show('Lỗi xuất ảnh: '+e.message,true); }
     finally {
       state.busy=false;state.cancel=false;
@@ -874,7 +882,7 @@
     el('qualityRow').hidden=!!useLossless;
     let help;
     if(format==='auto'){
-      help='Giữ nguyên định dạng JPG / PNG / WebP từng ảnh. '+(el('compressionMode').value==='under'?'Chỉ xuất file nhỏ hơn ảnh gốc; ưu tiên chất lượng cao và bỏ qua ảnh không đạt.':'Ưu tiên chất lượng cao, có thể lớn hơn ảnh gốc.')+' JPG/WebP vẫn mã hóa lại, không thể bảo đảm giống hệt từng pixel.';
+      help='Giữ nguyên định dạng JPG / PNG / WebP từng ảnh. '+(el('compressionMode').value==='under'?'Cố gắng giảm MB ở chất lượng 92–98%. Nếu ảnh gốc đã nén quá tốt thì vẫn xuất ảnh đã chỉnh, báo tăng dung lượng và không hạ dưới 92%.':'Ưu tiên chất lượng cao, có thể lớn hơn ảnh gốc.')+' JPG/WebP mã hóa lại có hao hụt; không thể đảm bảo giống hệt từng pixel.';
     }else if(format==='image/png'){
       help='PNG nén không mất dữ liệu ảnh sau chỉnh sửa nhưng ảnh JPG đổi sang PNG có thể nặng gấp nhiều lần.';
     }else{
