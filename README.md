@@ -30,6 +30,15 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
+## Chèn ảnh đè nhiều lớp (R20.23)
+
+- Trong **Chỉnh ảnh hàng loạt**, bật ô **Chèn ảnh đè**, chọn một hoặc nhiều logo PNG/JPG/WebP có sẵn trên điện thoại/máy tính. PNG hỗ trợ nền trong suốt, ảnh có nền trắng sẽ giữ đúng nền trắng như nguồn.
+- Mỗi hình là một lớp riêng: chọn trực tiếp trên ảnh hoặc danh sách, kéo vị trí, kéo góc để co/phóng, kéo nút xoay để đổi góc; có thanh chỉnh chiều rộng, góc xoay và **độ hiển thị mặc định 100%**.
+- Trên bàn phím, chọn lớp rồi **Ctrl+C → Ctrl+V** để sao chép và dán nhiều lần (nội bộ tool), mỗi bản lệch nhẹ cho dễ kéo tới logo khác. Xiaomi có nút **Copy / Dán / Nhân bản** tương đương. Có nút xóa, đưa lên trên/xuống dưới.
+- Mặc định lớp mới chỉ áp dụng **ảnh đang xem**; tích **Áp dụng lên tất cả ảnh** trước khi thêm/copy nếu muốn vị trí lớp được dùng cho toàn bộ lô.
+- Chỉ xuất lớp ảnh thật; đường khung tím và các điểm điều khiển sẽ không xuất vào file. Watermark, chèn chữ, tự crop và tự cân sáng vẫn giữ nguyên.
+- Tệp logo xử lý cục bộ trong trình duyệt, không tải lên server. Khi xóa danh sách hoặc chọn lô ảnh gốc mới, các lớp tạm được xóa.
+
 ## Chế độ Patch có thước và Auto Tone (R20.22)
 
 - Bật **Auto Crop** → **Patch có thước — vuông 1:1**. Thuật toán đọc toàn ảnh ở độ phân giải nhỏ, tìm patch vàng/trắng trên thảm xanh, thước đứng trái và thước ngang dưới, nhận diện dải chữ nền màu cuối ảnh để loại khỏi khung. Khung patch vuông đặt patch gần trung tâm và giữ các mốc thước, có thể chọn ba ô giữ thước trái/thước dưới/bỏ caption. Ảnh không phù hợp hoặc thiếu thước sẽ được đánh dấu **Cần xem lại** để chỉnh tay, không giả vờ nhận diện chính xác. Đây là phát hiện màu/cạnh theo quy tắc, không phải OCR hay AI phân đoạn.
@@ -73,7 +82,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.22 Patch Ruler Crop & Adaptive Tone**.
+Bản hiện tại: **R20.23 Multiple Image Overlays**.
 
 ### Preset tram DTF
 
