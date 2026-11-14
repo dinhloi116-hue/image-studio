@@ -7,7 +7,7 @@
 
 
 
-<title>Chỉnh ảnh hàng loạt R20.19 | Image Studio DHL</title>
+<title>Chỉnh ảnh hàng loạt R20.20 | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
 *{box-sizing:border-box}
@@ -45,6 +45,25 @@ fieldset{padding:0;border:0;margin:0;min-width:0}
 .cropSettings{display:grid;gap:11px;margin-top:11px}
 .cropActions{display:flex;gap:8px;flex-wrap:wrap}
 .cropActions button{flex:1;min-width:115px}
+.cropBatchActions{display:flex;gap:8px;flex-wrap:wrap}
+.cropBatchActions button{flex:1;min-width:145px}
+.cropReview{background:#10253d;border:1px solid #365d80;border-radius:12px;padding:12px;display:grid;gap:10px}
+.cropReviewStatus{font-size:13px;color:#dbeafe}
+.cropThumbs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px;max-height:430px;overflow:auto}
+.cropThumb{min-height:126px;display:grid;align-content:start;gap:5px;padding:6px;text-align:left;background:#0b192b;border:1px solid #304b68;border-radius:9px;font-weight:500}
+.cropThumb img{width:100%;aspect-ratio:1;object-fit:contain;background:#1b2939;border-radius:5px}
+.cropThumb .cropName{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;font-size:11px}
+.cropThumb .cropFlag{font-size:11px;color:#9fe8c1}
+.cropThumb .cropFlag.review{color:#ffb98d}
+.cropThumb.selected{border-color:#54f5fc;box-shadow:0 0 0 1px #54f5fc}
+.textGroup{background:#132838;border:1px solid #40677e;padding:13px;border-radius:12px}
+.textGroup label{display:grid;gap:5px;color:#b9d9ef}
+.textToggle{display:flex!important;align-items:center;gap:10px;font-weight:800;font-size:15px;color:#f0f5fc!important}
+.textToggle input{width:21px;height:21px;accent-color:#3b82f6}
+.textSettings{display:grid;gap:11px;margin-top:12px}
+.textSettings textarea{font:inherit;resize:vertical;min-height:80px;width:100%;background:#0b192b;border:1px solid #40516a;border-radius:10px;padding:9px;color:var(--ink)}
+.textSettings input[type=color]{width:100%;height:42px;border:1px solid #40516a;background:#0b192b;border-radius:9px;padding:4px}
+#preview.text-edit{touch-action:none;cursor:crosshair}
 .cropEditorPanel{background:#0d1b2e;border:1px solid #46769b;border-radius:13px;padding:10px;display:grid;gap:10px}
 #cropEditor{display:block;max-width:100%;max-height:55vh;width:auto;height:auto;margin:auto;touch-action:none;cursor:grab;border-radius:8px;border:1px solid #2c4e69}
 #cropEditor:active{cursor:grabbing}
@@ -99,7 +118,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 </head>
 <body>
 <header class="top">
-  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.19 • Auto Crop tùy chọn • Watermark & chỉnh màu hàng loạt</p></div>
+  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.20 • Auto Crop thông minh + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
   <button id="goBack" type="button">← Về Image Studio</button>
 </header>
 <main class="shell">
@@ -134,6 +153,16 @@ progress{width:100%;height:12px;accent-color:var(--green)}
         </div>
       </section>
       <select id="fileSelect" aria-label="Chọn ảnh để xem trước" disabled></select>
+      <section id="cropBatchReview" class="cropReview" hidden aria-label="Kiểm tra Auto Crop toàn bộ ảnh">
+        <strong>Kiểm tra nhanh khung cắt cả lô</strong>
+        <div class="cropReviewStatus" id="cropBatchStatus">Chưa quét ảnh</div>
+        <div class="cropBatchActions">
+          <button type="button" id="cropShowWarnings">⚠ Chỉ hiện ảnh cần xem</button>
+          <button type="button" id="cropShowAll">▦ Hiện tất cả</button>
+          <button type="button" id="cropCloseReview">Đóng</button>
+        </div>
+        <div id="cropThumbs" class="cropThumbs"></div>
+      </section>
       <div class="exportArea">
         <div class="sizes" aria-live="polite">
           <div class="sizeStat"><span>Ảnh đang xem • Gốc</span><strong id="originalMB">—</strong></div>
@@ -192,24 +221,81 @@ progress{width:100%;height:12px;accent-color:var(--green)}
             </label>
             <label for="cropMode">Chế độ
               <select id="cropMode">
-                <option value="auto" selected>Tự nhận diện sản phẩm</option>
+                <option value="auto" selected>Thông minh – ưu tiên giữ trọn áo</option>
                 <option value="center">Cắt giữa ảnh</option>
               </select>
             </label>
           </div>
           <div class="range"><div><label for="cropPadding">Chừa lề quanh sản phẩm</label><output id="cropPaddingValue">7%</output></div>
             <input id="cropPadding" type="range" min="0" max="25" step="1" value="7"></div>
-          <div class="range"><div><label for="cropSensitivity">Độ nhạy tìm sản phẩm</label><output id="cropSensitivityValue">50%</output></div>
+          <div class="range"><div><label for="cropSensitivity">Độ nhạy nhận diện</label><output id="cropSensitivityValue">50%</output></div>
             <input id="cropSensitivity" type="range" min="10" max="90" step="1" value="50"></div>
           <div class="cropActions">
             <button type="button" id="cropEdit" disabled>✥ Chỉnh khung thủ công</button>
             <button type="button" id="cropClearSelected" disabled>↻ Trả ảnh này về Auto</button>
           </div>
-          <p class="helper" id="cropStatus">Mỗi ảnh được tự căn riêng. Chỉnh thủ công chỉ áp dụng ảnh đang xem; ảnh khác vẫn Auto Crop.</p>
+          <div class="cropBatchActions">
+            <button type="button" id="cropScan" disabled>🔍 Quét & kiểm tra cả lô</button>
+            <button type="button" id="cropScanReview" disabled>⚠ Ảnh cần kiểm tra</button>
+          </div>
+          <p class="helper" id="cropStatus">Quét nhanh nhiều ảnh, xem ảnh bị nghi cắt sai rồi chỉnh từng ảnh. Ảnh không chắc chắn được cắt an toàn, không tự ép sát.</p>
+        </div>
+      </div>
+      <div class="group textGroup" id="textSection">
+        <label class="textToggle" for="textEnabled">
+          <input type="checkbox" id="textEnabled"><span>3. CHÈN CHỮ LÊN ẢNH — tùy chọn</span>
+        </label>
+        <p class="helper">Khác watermark bảo vệ: đây là chữ chú thích, tên sản phẩm, giá hoặc tên ảnh. Bật để áp dụng cả lô; có thể chạm vào ảnh xem trước để đặt vị trí.</p>
+        <div id="textSettings" class="textSettings" hidden>
+          <label for="textContent">Nội dung chữ
+            <textarea id="textContent" maxlength="300" rows="2" placeholder="Ví dụ: DHL SPORTS • Hàng mới về"></textarea>
+          </label>
+          <p class="helper">Tự thay nội dung từng ảnh bằng <code>{filename}</code>, <code>{index}</code>, <code>{total}</code>. Hỗ trợ xuống dòng.</p>
+          <div class="fields">
+            <label for="textFont">Kiểu chữ
+              <select id="textFont">
+                <option value="system" selected>Rõ nét – hệ thống</option>
+                <option value="sans">Arial</option>
+                <option value="serif">Serif</option>
+                <option value="mono">Monospace</option>
+              </select>
+            </label>
+            <label for="textPosition">Vị trí
+              <select id="textPosition">
+                <option value="top-left">Trên trái</option><option value="top-center">Trên giữa</option><option value="top-right">Trên phải</option>
+                <option value="middle-left">Giữa trái</option><option value="middle-center">Chính giữa</option><option value="middle-right">Giữa phải</option>
+                <option value="bottom-left">Dưới trái</option><option value="bottom-center" selected>Dưới giữa</option><option value="bottom-right">Dưới phải</option>
+                <option value="custom">Đặt tay trên ảnh</option>
+              </select>
+            </label>
+            <label for="textColor">Màu chữ <input type="color" id="textColor" value="#ffffff"></label>
+            <label for="textOutlineColor">Màu viền <input type="color" id="textOutlineColor" value="#000000"></label>
+            <label for="textBackground">Nền sau chữ
+              <select id="textBackground">
+                <option value="none" selected>Không nền</option><option value="dark">Nền đen mờ</option><option value="light">Nền trắng mờ</option>
+              </select>
+            </label>
+            <label for="textBold">Kiểu nét
+              <select id="textBold"><option value="yes" selected>Đậm</option><option value="no">Thường</option></select>
+            </label>
+          </div>
+          <div class="range"><div><label for="textSize">Cỡ chữ</label><output id="textSizeValue">5%</output></div>
+            <input id="textSize" type="range" min="2" max="15" value="5"></div>
+          <div class="range"><div><label for="textOpacity">Độ rõ</label><output id="textOpacityValue">100%</output></div>
+            <input id="textOpacity" type="range" min="20" max="100" value="100"></div>
+          <div class="range"><div><label for="textOutline">Độ dày viền</label><output id="textOutlineValue">2</output></div>
+            <input id="textOutline" type="range" min="0" max="5" value="2"></div>
+          <div class="range"><div><label for="textMargin">Lề chữ</label><output id="textMarginValue">4%</output></div>
+            <input id="textMargin" type="range" min="0" max="15" value="4"></div>
+          <div class="fields" id="textCoords" hidden>
+            <label for="textX">Ngang (%)<input type="range" id="textX" min="0" max="100" value="50"></label>
+            <label for="textY">Dọc (%)<input type="range" id="textY" min="0" max="100" value="85"></label>
+          </div>
+          <p class="helper" id="textStatus">Chạm hoặc kéo trên ảnh xem trước để đặt chữ. Các thay đổi áp dụng cùng lúc cho mọi ảnh.</p>
         </div>
       </div>
       <div>
-        <h2>3. Chỉnh màu và độ nét</h2>
+        <h2>4. Chỉnh màu và độ nét</h2>
         <div class="presetRow">
           <button type="button" data-preset="neutral">Nguyên bản</button>
           <button type="button" data-preset="shop">Sáng bán hàng</button>
@@ -224,7 +310,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
       </div>
       <div class="group">
         <details>
-          <summary>4. Chất lượng và kích thước xuất</summary>
+          <summary>5. Chất lượng và kích thước xuất</summary>
           <div class="fields">
             <label for="format">Định dạng<select id="format"><option value="auto" selected>Tự động (giữ định dạng ảnh gốc)</option><option value="image/jpeg">JPG (nhẹ, chất lượng cao)</option><option value="image/webp">WebP (nhẹ hơn, có hao hụt)</option><option value="image/png">PNG (file có thể rất nặng)</option></select></label>
             <label for="maxEdge">Kích thước<select id="maxEdge"><option value="0">Giữ nguyên ảnh gốc</option><option value="4000">Cạnh dài tối đa 4000px</option><option value="3000">Cạnh dài tối đa 3000px</option><option value="2048">Cạnh dài tối đa 2048px</option></select></label>
@@ -246,6 +332,8 @@ progress{width:100%;height:12px;accent-color:var(--green)}
   </div>
 </main>
 <script src="crop-core.js"></script>
+<script src="crop-intelligence.js"></script>
+<script src="text-overlay.js"></script>
 <script src="batch-editor.js"></script>
 </body>
 </html>
