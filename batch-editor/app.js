@@ -71,7 +71,7 @@
       });
     }
   }
-  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, cropOverrides:new Map(), cropAnalysis:new Map(), cropThumbs:new Map(), cropReviewFilter:'all', cropScanBusy:false, cropEditor:null, cropEditorSeq:0, totals: { originals:0, exported:0, exportCount:0 } };
+  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, cropOverrides:new Map(), cropAnalysis:new Map(), toneAnalysis:new Map(), cropThumbs:new Map(), cropReviewFilter:'all', cropScanBusy:false, cropEditor:null, cropEditorSeq:0, totals: { originals:0, exported:0, exportCount:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
     shop: { exposure:14, brightness:8, contrast:8, vibrance:18, sharpness:26 },
@@ -196,6 +196,8 @@
       cropMode:el('cropMode').value,cropPadding:number('cropPadding'),cropSensitivity:number('cropSensitivity'),
       cropPatchKeepLeft:el('cropPatchKeepLeft').checked,cropPatchKeepBottom:el('cropPatchKeepBottom').checked,
       cropPatchRemoveCaption:el('cropPatchRemoveCaption').checked,
+      autoTone:el('autoTone').checked,
+      toneHighlights:number('toneHighlights'),toneShadows:number('toneShadows'),toneClarity:number('toneClarity'),
       textEnabled:el('textEnabled').checked,textContent:el('textContent').value,
       textFont:el('textFont').value,textPosition:el('textPosition').value,
       textColor:el('textColor').value,textOutlineColor:el('textOutlineColor').value,
@@ -245,6 +247,35 @@
       console.warn('DHL crop fallback:',error);
       return window.DHLCrop.centered(img,c);
     }
+  }
+  function toneFor(img,c,file,box) {
+    if(!window.DHLAutoTone){
+      if(c.autoTone)throw Error('Chưa tải mô-đun Tự cân sáng, vui lòng tải lại trang.');
+      return {...c,highlightRecover:c.toneHighlights||0,shadowLift:c.toneShadows||0,clarity:c.toneClarity||0};
+    }
+    if(!c.autoTone)return window.DHLAutoTone.adaptiveConfig(c,null);
+    const key=cropSettingKey(c)+'|'+JSON.stringify(box);
+    const hit=file&&state.toneAnalysis.get(file);
+    let analysis=hit&&hit.key===key?hit.result:null;
+    if(!analysis){
+      analysis=window.DHLAutoTone.analyze(img,box);
+      if(file)state.toneAnalysis.set(file,{key,result:analysis});
+    }
+    return window.DHLAutoTone.adaptiveConfig(c,analysis);
+  }
+  function updateToneControls(){
+    const automatic=el('autoTone').checked;
+    for(const id of ['exposure','brightness','contrast','vibrance','sharpness'])el(id).disabled=automatic;
+    document.querySelectorAll('[data-preset]').forEach(button=>{button.disabled=automatic;});
+    for(const id of ['toneHighlights','toneShadows','toneClarity']){
+      el(id+'Value').textContent=el(id).value+'%';
+    }
+    const file=state.files[state.index];
+    const analysis=file&&state.toneAnalysis.get(file)?.result;
+    el('toneStatus').textContent=!file?'Chọn ảnh để phân tích ánh sáng.':
+      !automatic?'Đang chỉnh màu thủ công (vẫn hỗ trợ Highlight / Shadow / Chi tiết).':
+      analysis&&window.DHLAutoTone?window.DHLAutoTone.label(analysis):
+      'Đang phân tích độ sáng của ảnh đang xem…';
   }
   function updateCropControls(){
     const enabled=el('cropEnabled').checked;
@@ -558,7 +589,9 @@
     canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     if(!ctx) throw new Error('Trình duyệt không hỗ trợ Canvas');
-    const hasAdjustments=!!(c.exposure||c.brightness||c.contrast||c.vibrance||c.sharpness);
+    const tone=toneFor(img,c,file,box);
+    const hasAdjustments=!!(tone.exposure||tone.brightness||tone.contrast||tone.vibrance||
+      tone.sharpness||tone.highlightRecover||tone.shadowLift||tone.clarity);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(aspect&&c.format!=='image/png'){ctx.fillStyle=sampleBackgroundColor(img,sw,sh);ctx.fillRect(0,0,w,h);}
     else if(c.format==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);}
@@ -570,7 +603,7 @@
       const tile=document.createElement('canvas');
       const tc=tile.getContext('2d',{willReadFrequently:true});
       if(!tc)throw new Error('Không tạo được bộ nhớ xử lý ảnh');
-      const step=512,halo=c.sharpness?1:0;
+      const step=512,halo=tone.sharpness||tone.clarity?1:0;
       try{
         for(let y=0;y<dh;y+=step){
           for(let x=0;x<dw;x+=step){
@@ -581,7 +614,7 @@
             tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';
             if(c.format==='image/jpeg'){tc.fillStyle='#fff';tc.fillRect(0,0,tw,th);}
             tc.drawImage(img,sx+left*srcW/dw,sy+top*srcH/dh,tw*srcW/dw,th*srcH/dh,0,0,tw,th);
-            adjustPixels(tc,tw,th,c);
+            adjustPixels(tc,tw,th,tone);
             // putImageData's dirty rectangle writes only the center area;
             // neighbor tiles never modify source pixels for later tiles.
             const data=tc.getImageData(0,0,tw,th);
@@ -605,6 +638,7 @@
     el('previous').disabled=!len||state.index===0||state.busy;
     el('next').disabled=!len||state.index===len-1||state.busy;
     el('fileName').textContent=len?state.files[state.index].name:'Chưa chọn ảnh';
+    updateToneControls();
     el('position').textContent=len?(state.index+1)+' / '+len:'0 / 0';
     const pick=el('fileSelect');
     pick.replaceChildren();
@@ -629,6 +663,7 @@
       if(id!==state.previewSeq) return;
       const c=renderImage(img,perFileConfig(config(),file),true,file);
       if(id!==state.previewSeq) return;
+      updateToneControls();
       const canvas=el('preview');
       canvas.width=c.width;canvas.height=c.height;
       canvas.getContext('2d').drawImage(c,0,0);
@@ -909,6 +944,7 @@
   function resetCropAnalysis(){
     state.cropAnalysis.clear();
     state.cropThumbs.clear();
+    state.toneAnalysis.clear();
     state.cropReviewFilter='all';
     el('cropBatchReview').hidden=true;
     el('cropThumbs').replaceChildren();
@@ -1111,6 +1147,12 @@
       node.addEventListener('input',()=>{storeSettings();updateTextControls();schedulePreview();});
       if(node.tagName==='SELECT')node.addEventListener('change',()=>{storeSettings();updateTextControls();schedulePreview();});
     }
+    for(const id of ['autoTone','toneHighlights','toneShadows','toneClarity']){
+      const node=el(id);
+      const change=()=>{storeSettings();updateToneControls();schedulePreview();};
+      node.addEventListener('input',change);
+      if(node.type==='checkbox')node.addEventListener('change',change);
+    }
     el('preview').addEventListener('pointerdown',moveTextAtPointer);
     el('preview').addEventListener('pointermove',moveTextAtPointer);
 
@@ -1145,7 +1187,7 @@
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');loadFiles(e.dataTransfer.files);});
     el('goBack').addEventListener('click',()=>{if(history.length>1)history.back();else location.href=location.protocol==='chrome-extension:'?'tool.html':'../direct/';});
     refreshLabels();updatePresetSelection();setPreviewStatus();
-    updateCropControls();updateTextControls();
+    updateCropControls();updateToneControls();updateTextControls();
     clearOldTempFiles();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
