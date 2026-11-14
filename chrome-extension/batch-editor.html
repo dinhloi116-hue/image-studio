@@ -7,7 +7,7 @@
 
 
 
-<title>Chỉnh ảnh hàng loạt | Image Studio DHL</title>
+<title>Chỉnh ảnh hàng loạt R20.19 | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
 *{box-sizing:border-box}
@@ -39,6 +39,18 @@ fieldset{padding:0;border:0;margin:0;min-width:0}
 .group{border-top:1px solid var(--line);padding-top:13px}
 .presetRow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
 .presetRow button{padding:9px 5px;font-size:12px}
+.cropGroup{background:#0e2337;border:1px solid #385a78;padding:13px;border-radius:12px;scroll-margin-top:15px}
+.cropHead{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;cursor:pointer}
+.cropHead input{width:21px;height:21px;accent-color:#3b82f6}
+.cropSettings{display:grid;gap:11px;margin-top:11px}
+.cropActions{display:flex;gap:8px;flex-wrap:wrap}
+.cropActions button{flex:1;min-width:115px}
+.cropEditorPanel{background:#0d1b2e;border:1px solid #46769b;border-radius:13px;padding:10px;display:grid;gap:10px}
+#cropEditor{display:block;max-width:100%;max-height:55vh;width:auto;height:auto;margin:auto;touch-action:none;cursor:grab;border-radius:8px;border:1px solid #2c4e69}
+#cropEditor:active{cursor:grabbing}
+.cropEditorControls{display:flex;align-items:center;flex-wrap:wrap;gap:7px}
+.cropEditorControls button{flex:1;min-width:94px}
+#cropEditorHint{font-size:12px;color:#b9d9ef;margin:0}
 .presetRow button.selected{background:#1d4ed8;border-color:#93c5fd;color:#fff;box-shadow:0 0 0 1px #1d4ed8}
 .helper{font-size:12px;color:var(--muted);margin:8px 0 0}
 .range{display:grid;gap:4px;margin:12px 0}
@@ -111,6 +123,16 @@ progress{width:100%;height:12px;accent-color:var(--green)}
         <div class="stepper"><button id="previous" type="button" aria-label="Ảnh trước" disabled>‹</button><span id="position">0 / 0</span><button id="next" type="button" aria-label="Ảnh sau" disabled>›</button></div>
       </div>
       <div class="canvasBox"><canvas id="preview" width="1" height="1" aria-label="Xem trước ảnh đã chỉnh"></canvas></div>
+      <section id="cropEditorPanel" class="cropEditorPanel" hidden aria-label="Chỉnh khung cắt trên ảnh">
+        <strong>✂ Chỉnh khung cắt của ảnh đang chọn</strong>
+        <p id="cropEditorHint">Kéo bên trong khung để di chuyển. Kéo góc xanh để phóng to / thu nhỏ khung. Ấn Áp dụng để chỉ sửa ảnh đang chọn.</p>
+        <canvas id="cropEditor" width="320" height="240" aria-label="Kéo để chỉnh khung cắt trên ảnh" role="img"></canvas>
+        <div class="cropEditorControls">
+          <button type="button" id="cropReset">↻ Tự căn lại</button>
+          <button type="button" id="cropCancel">Hủy</button>
+          <button class="primary" type="button" id="cropApply">✓ Áp dụng</button>
+        </div>
+      </section>
       <select id="fileSelect" aria-label="Chọn ảnh để xem trước" disabled></select>
       <div class="exportArea">
         <div class="sizes" aria-live="polite">
@@ -148,8 +170,46 @@ progress{width:100%;height:12px;accent-color:var(--green)}
         </details>
         <p class="helper">Nhập chữ như “ao in top 2” → xem trước → tải tất cả ảnh riêng lẻ. Không cần chỉnh từng tấm.</p>
       </div>
+      <div class="group cropGroup" id="cropSection">
+        <label class="cropHead" for="cropEnabled">
+          <input id="cropEnabled" type="checkbox">
+          <span>2. AUTO CROP — Cắt ảnh hàng loạt</span>
+        </label>
+        <p class="helper">Tắt mặc định: ảnh không bị cắt. Bật để tool tự xác định vùng sản phẩm, căn khung đúng tỷ lệ rồi áp dụng cho cả lô.</p>
+        <div id="cropSettings" class="cropSettings" hidden>
+          <div class="fields">
+            <label for="cropRatio">Tỷ lệ khung
+              <select id="cropRatio">
+                <option value="1:1" selected>1:1 • Vuông Shopee</option>
+                <option value="4:5">4:5 • Dọc bán hàng</option>
+                <option value="3:4">3:4 • Dọc</option>
+                <option value="2:3">2:3 • Chân dung</option>
+                <option value="9:16">9:16 • Story</option>
+                <option value="16:9">16:9 • Ngang</option>
+                <option value="3:2">3:2 • Ngang</option>
+                <option value="original">Gốc • Chỉ cắt sát</option>
+              </select>
+            </label>
+            <label for="cropMode">Chế độ
+              <select id="cropMode">
+                <option value="auto" selected>Tự nhận diện sản phẩm</option>
+                <option value="center">Cắt giữa ảnh</option>
+              </select>
+            </label>
+          </div>
+          <div class="range"><div><label for="cropPadding">Chừa lề quanh sản phẩm</label><output id="cropPaddingValue">7%</output></div>
+            <input id="cropPadding" type="range" min="0" max="25" step="1" value="7"></div>
+          <div class="range"><div><label for="cropSensitivity">Độ nhạy tìm sản phẩm</label><output id="cropSensitivityValue">50%</output></div>
+            <input id="cropSensitivity" type="range" min="10" max="90" step="1" value="50"></div>
+          <div class="cropActions">
+            <button type="button" id="cropEdit" disabled>✥ Chỉnh khung thủ công</button>
+            <button type="button" id="cropClearSelected" disabled>↻ Trả ảnh này về Auto</button>
+          </div>
+          <p class="helper" id="cropStatus">Mỗi ảnh được tự căn riêng. Chỉnh thủ công chỉ áp dụng ảnh đang xem; ảnh khác vẫn Auto Crop.</p>
+        </div>
+      </div>
       <div>
-        <h2>2. Chỉnh màu và độ nét</h2>
+        <h2>3. Chỉnh màu và độ nét</h2>
         <div class="presetRow">
           <button type="button" data-preset="neutral">Nguyên bản</button>
           <button type="button" data-preset="shop">Sáng bán hàng</button>
@@ -164,7 +224,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
       </div>
       <div class="group">
         <details>
-          <summary>3. Chất lượng và kích thước xuất</summary>
+          <summary>4. Chất lượng và kích thước xuất</summary>
           <div class="fields">
             <label for="format">Định dạng<select id="format"><option value="auto" selected>Tự động (giữ định dạng ảnh gốc)</option><option value="image/jpeg">JPG (nhẹ, chất lượng cao)</option><option value="image/webp">WebP (nhẹ hơn, có hao hụt)</option><option value="image/png">PNG (file có thể rất nặng)</option></select></label>
             <label for="maxEdge">Kích thước<select id="maxEdge"><option value="0">Giữ nguyên ảnh gốc</option><option value="4000">Cạnh dài tối đa 4000px</option><option value="3000">Cạnh dài tối đa 3000px</option><option value="2048">Cạnh dài tối đa 2048px</option></select></label>
@@ -185,6 +245,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
     </aside>
   </div>
 </main>
+<script src="crop-core.js"></script>
 <script src="batch-editor.js"></script>
 </body>
 </html>
