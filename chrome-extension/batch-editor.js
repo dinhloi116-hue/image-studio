@@ -208,6 +208,144 @@
     return (n>0?'+':'')+n;
   }
   function refreshLabels() { keys.forEach(id=>{ const node=el(id+'Value'); if(node)node.textContent=formatValue(id); }); }
+
+  // Every source image gets its own crop, unless the user manually overrides it.
+  function frameFor(img,c,file){
+    if(!c.cropEnabled||!window.DHLCrop)return {x:0,y:0,w:1,h:1};
+    const saved=file&&state.cropOverrides.get(file);
+    if(saved)return saved;
+    try{
+      return c.cropMode==='center'?window.DHLCrop.centered(img,c):window.DHLCrop.plan(img,c);
+    }catch(error){
+      console.warn('DHL crop fallback:',error);
+      return window.DHLCrop.centered(img,c);
+    }
+  }
+  function updateCropControls(){
+    const enabled=el('cropEnabled').checked;
+    el('cropSettings').hidden=!enabled;
+    const file=state.files[state.index];
+    const canEdit=!!file&&enabled&&!state.busy&&!state.loading;
+    el('cropEdit').disabled=!canEdit;
+    el('cropClearSelected').disabled=!canEdit||!state.cropOverrides.has(file);
+    el('cropPaddingValue').textContent=el('cropPadding').value+'%';
+    el('cropSensitivityValue').textContent=el('cropSensitivity').value+'%';
+    el('cropStatus').textContent=!enabled
+      ?'Auto Crop đang tắt, ảnh xuất giữ nguyên bố cục gốc.'
+      :!file?'Chọn ít nhất một ảnh để tự căn hoặc chỉnh khung.'
+      :state.cropOverrides.has(file)?'Ảnh này dùng khung chỉnh tay; ảnh khác vẫn được Auto Crop riêng.'
+      :'Đang tự căn theo từng ảnh. Bấm “Chỉnh khung thủ công” nếu cần dịch hoặc thu phóng riêng ảnh này.';
+  }
+  function closeCropEditor(){
+    state.cropEditorSeq++;
+    if(state.cropEditor)release(state.cropEditor.img);
+    state.cropEditor=null;
+    el('cropEditorPanel').hidden=true;
+  }
+  function drawCropEditor(){
+    const ed=state.cropEditor;
+    if(!ed)return;
+    const c=el('cropEditor'),ctx=c.getContext('2d');
+    const [sw,sh]=imageDims(ed.img),scale=Math.min(1,980/Math.max(sw,sh));
+    const w=Math.max(1,Math.round(sw*scale)),h=Math.max(1,Math.round(sh*scale));
+    if(c.width!==w)c.width=w;
+    if(c.height!==h)c.height=h;
+    ctx.clearRect(0,0,w,h);
+    ctx.drawImage(ed.img,0,0,w,h);
+    const box=ed.box,x=box.x*w,y=box.y*h,bw=box.w*w,bh=box.h*h;
+    ctx.fillStyle='rgba(0,0,0,.57)';
+    ctx.fillRect(0,0,w,Math.max(0,y));
+    ctx.fillRect(0,y,Math.max(0,x),bh);
+    ctx.fillRect(x+bw,y,Math.max(0,w-x-bw),bh);
+    ctx.fillRect(0,y+bh,w,Math.max(0,h-y-bh));
+    ctx.strokeStyle='#54f5fc';ctx.lineWidth=Math.max(2,w/400);
+    ctx.strokeRect(x,y,bw,bh);
+    ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;
+    for(let k=1;k<=2;k++){
+      ctx.beginPath();ctx.moveTo(x+bw*k/3,y);ctx.lineTo(x+bw*k/3,y+bh);
+      ctx.moveTo(x,y+bh*k/3);ctx.lineTo(x+bw,y+bh*k/3);ctx.stroke();
+    }
+    const rad=Math.max(6,Math.min(14,w*.013));
+    ctx.fillStyle='#00e7ff';ctx.strokeStyle='#051526';ctx.lineWidth=2;
+    for(const [px,py] of [[x,y],[x+bw,y],[x,y+bh],[x+bw,y+bh]]){
+      ctx.beginPath();ctx.arc(px,py,rad,0,Math.PI*2);ctx.fill();ctx.stroke();
+    }
+  }
+  async function openCropEditor(){
+    if(state.busy||state.loading||!el('cropEnabled').checked)return;
+    const file=state.files[state.index];
+    if(!file)return;
+    closeCropEditor();
+    const seq=state.cropEditorSeq;
+    let img;
+    try{
+      img=await decode(file);
+      if(seq!==state.cropEditorSeq||file!==state.files[state.index]){
+        release(img);return;
+      }
+      const c=config();
+      state.cropEditor={file,img,box:{...frameFor(img,c,file)},drag:null,auto:true};
+      el('cropEditorPanel').hidden=false;
+      drawCropEditor();
+      el('cropEditorPanel').scrollIntoView({behavior:'smooth',block:'nearest'});
+    }catch(error){
+      if(img)release(img);
+      show('Không mở được khung cắt: '+error.message,true);
+    }
+  }
+  function cropPointer(event){
+    const c=el('cropEditor'),rect=c.getBoundingClientRect();
+    return {x:Math.max(0,Math.min(1,(event.clientX-rect.left)/rect.width)),
+            y:Math.max(0,Math.min(1,(event.clientY-rect.top)/rect.height)),
+            width:rect.width,height:rect.height};
+  }
+  function startCropDrag(event){
+    const ed=state.cropEditor;
+    if(!ed||event.button>0)return;
+    const p=cropPointer(event),b=ed.box;
+    const corners=[[b.x,b.y,-1,-1],[b.x+b.w,b.y,1,-1],
+      [b.x,b.y+b.h,-1,1],[b.x+b.w,b.y+b.h,1,1]];
+    const handle=corners.find(c=>Math.hypot((p.x-c[0])*p.width,(p.y-c[1])*p.height)<29);
+    const inside=p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
+    ed.drag={box:{...b},x:p.x,y:p.y,mode:handle?'resize':'move',corner:handle};
+    if(!handle&&!inside)ed.box=window.DHLCrop.move(b,p.x-(b.x+b.w/2),p.y-(b.y+b.h/2));
+    el('cropEditor').setPointerCapture?.(event.pointerId);
+    event.preventDefault();
+    drawCropEditor();
+  }
+  function moveCropDrag(event){
+    const ed=state.cropEditor;
+    if(!ed||!ed.drag)return;
+    const p=cropPointer(event),drag=ed.drag;
+    if(drag.mode==='move'){
+      ed.box=window.DHLCrop.move(drag.box,p.x-drag.x,p.y-drag.y);
+    }else{
+      const [sw,sh]=imageDims(ed.img);
+      const b=drag.box,c=drag.corner,cx=b.x+b.w/2,cy=b.y+b.h/2;
+      const zoomX=2*Math.abs(p.x-cx)/Math.max(.001,b.w);
+      const zoomY=2*Math.abs(p.y-cy)/Math.max(.001,b.h);
+      const factor=Math.max(.20,Math.max(zoomX,zoomY));
+      ed.box=window.DHLCrop.zoom(b,factor,sw,sh,el('cropRatio').value);
+    }
+    ed.auto=false;
+    event.preventDefault();drawCropEditor();
+  }
+  function finishCropDrag(event){
+    const ed=state.cropEditor;
+    if(!ed)return;
+    ed.drag=null;
+    try{el('cropEditor').releasePointerCapture?.(event.pointerId);}catch(_){}
+  }
+  function cropControlsChanged(id){
+    if(id==='cropRatio')state.cropOverrides.clear();
+    if(!el('cropEnabled').checked)closeCropEditor();
+    else if(state.cropEditor)closeCropEditor();
+    state.lastExportSettings=null;
+    storeSettings();
+    updateCropControls();
+    schedulePreview();
+  }
+
   // Decode from a stable in-memory/OPFS Blob, never directly from a picker URI.
   // Retry both bitmap and HTML image pathways for Android WebView/Chrome.
   function imageFromUrl(url,releaseUrl) {
