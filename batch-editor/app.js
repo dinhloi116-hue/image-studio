@@ -240,13 +240,14 @@
     const enabled=el('cropEnabled').checked;
     el('cropSettings').hidden=!enabled;
     const file=state.files[state.index];
-    const canEdit=!!file&&enabled&&!state.busy&&!state.loading;
+    const canEdit=!!file&&enabled&&!state.busy&&!state.loading&&!state.cropScanBusy;
     el('cropEdit').disabled=!canEdit;
+    el('selectFiles').disabled=state.cropScanBusy||state.loading||state.busy;
     el('cropClearSelected').disabled=!canEdit||!state.cropOverrides.has(file);
     el('cropScan').disabled=!canEdit||state.cropScanBusy;
     el('cropScanReview').disabled=!canEdit||state.cropScanBusy;
-    const reviewed=[...state.cropAnalysis.values()];
-    const flagged=reviewed.filter(item=>item.result?.needsReview).length;
+    const reviewed=[...state.cropAnalysis.entries()];
+    const flagged=reviewed.filter(([file,item])=>item.result?.needsReview&&!state.cropOverrides.has(file)).length;
     if(reviewed.length&&enabled)el('cropStatus').textContent='Đã phân tích '+reviewed.length+'/'+state.files.length+' ảnh · '+flagged+' ảnh cần xem lại. Chạm “Ảnh cần kiểm tra” để duyệt nhanh.';
     el('cropPaddingValue').textContent=el('cropPadding').value+'%';
     el('cropSensitivityValue').textContent=el('cropSensitivity').value+'%';
@@ -822,7 +823,7 @@
     }
   }
   async function saveToFolder() {
-    if(state.busy||state.loading||!state.files.length)return;
+    if(state.busy||state.loading||state.cropScanBusy||!state.files.length)return;
     if(typeof window.showDirectoryPicker!=='function'){
       show('Thiết bị không hỗ trợ chọn thư mục. Hãy dùng Tải tất cả ảnh.',true);return;
     }
@@ -926,6 +927,7 @@
     el('cropScan').disabled=true;el('cropScanReview').disabled=true;
     el('download').disabled=true;el('clear').disabled=true;
     const files=state.files.slice(),c=config(),key=cropSettingKey(c);
+    el('selectFiles').disabled=true;
     try{
       for(let i=0;i<files.length;i++){
         let img;
@@ -948,6 +950,7 @@
       }
     }finally{
       state.cropScanBusy=false;
+      el('selectFiles').disabled=false;
       setPreviewStatus();
       cropReviewList();
       el('cropBatchReview').hidden=false;
@@ -1021,19 +1024,43 @@
       const ed=state.cropEditor;if(!ed)return;
       if(ed.auto)state.cropOverrides.delete(ed.file);
       else state.cropOverrides.set(ed.file,{...ed.box});
+      if(state.cropAnalysis.has(ed.file))state.cropThumbs.set(ed.file,thumbnailFor(ed.img,ed.box));
       state.lastExportSettings=null;
-      closeCropEditor();updateCropControls();schedulePreview();
+      closeCropEditor();updateCropControls();
+      if(!el('cropBatchReview').hidden)cropReviewList();
+      schedulePreview();
     });
     el('cropClearSelected').addEventListener('click',()=>{
       const file=state.files[state.index];
       if(!file)return;
       state.cropOverrides.delete(file);
-      state.lastExportSettings=null;closeCropEditor();updateCropControls();schedulePreview();
+      state.cropThumbs.delete(file);
+      state.lastExportSettings=null;closeCropEditor();updateCropControls();
+      if(!el('cropBatchReview').hidden)cropReviewList();
+      schedulePreview();
     });
     el('cropEditor').addEventListener('pointerdown',startCropDrag);
     el('cropEditor').addEventListener('pointermove',moveCropDrag);
     el('cropEditor').addEventListener('pointerup',finishCropDrag);
     el('cropEditor').addEventListener('pointercancel',finishCropDrag);
+    el('cropScan').addEventListener('click',()=>scanAllCrops(false));
+    el('cropScanReview').addEventListener('click',()=>{
+      if(state.cropAnalysis.size<state.files.length)scanAllCrops(true);
+      else {state.cropReviewFilter='warnings';cropReviewList();el('cropBatchReview').hidden=false;el('cropBatchReview').scrollIntoView({behavior:'smooth',block:'start'});}
+    });
+    el('cropShowWarnings').addEventListener('click',()=>{state.cropReviewFilter='warnings';cropReviewList();});
+    el('cropShowAll').addEventListener('click',()=>{state.cropReviewFilter='all';cropReviewList();});
+    el('cropCloseReview').addEventListener('click',()=>{el('cropBatchReview').hidden=true;});
+    for(const id of ['textEnabled','textContent','textFont','textPosition','textColor',
+      'textOutlineColor','textBackground','textBold','textSize','textOpacity',
+      'textOutline','textMargin','textX','textY']){
+      const node=el(id);
+      node.addEventListener('input',()=>{storeSettings();updateTextControls();schedulePreview();});
+      if(node.tagName==='SELECT')node.addEventListener('change',()=>{storeSettings();updateTextControls();schedulePreview();});
+    }
+    el('preview').addEventListener('pointerdown',moveTextAtPointer);
+    el('preview').addEventListener('pointermove',moveTextAtPointer);
+
 
     el('selectFiles').addEventListener('change',async e=>{const files=Array.from(e.target.files);try{await loadFiles(files);}finally{e.target.value='';}});
     el('previous').addEventListener('click',()=>{if(state.index>0){closeCropEditor();state.index--;setPreviewStatus();schedulePreview();}});
@@ -1065,7 +1092,7 @@
     zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag');loadFiles(e.dataTransfer.files);});
     el('goBack').addEventListener('click',()=>{if(history.length>1)history.back();else location.href=location.protocol==='chrome-extension:'?'tool.html':'../direct/';});
     refreshLabels();updatePresetSelection();setPreviewStatus();
-    updateCropControls();
+    updateCropControls();updateTextControls();
     clearOldTempFiles();
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init);
