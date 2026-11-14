@@ -506,18 +506,28 @@
     if(!sw||!sh) throw new Error('Ảnh không có kích thước hợp lệ');
     const box=frameFor(img,c,file);
     const sx=box.x*sw,sy=box.y*sh,srcW=box.w*sw,srcH=box.h*sh;
+    const aspect=c.cropEnabled&&Number.isFinite(box.padAspect)&&box.padAspect>0?box.padAspect:null;
+    let outW=srcW,outH=srcH;
+    if(aspect){
+      if(outW/outH<aspect)outW=outH*aspect;
+      else outH=outW/aspect;
+    }
     const limit=preview?980:c.maxEdge;
-    const scale=limit>0?Math.min(1,limit/Math.max(srcW,srcH)):1;
-    const w=Math.max(1,Math.round(srcW*scale)),h=Math.max(1,Math.round(srcH*scale));
+    const scale=limit>0?Math.min(1,limit/Math.max(outW,outH)):1;
+    const w=Math.max(1,Math.round(outW*scale)),h=Math.max(1,Math.round(outH*scale));
+    const dw=Math.max(1,Math.min(w,Math.round(srcW*scale)));
+    const dh=Math.max(1,Math.min(h,Math.round(srcH*scale)));
+    const ox=Math.floor((w-dw)/2),oy=Math.floor((h-dh)/2);
     const canvas=document.createElement('canvas');
     canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
     if(!ctx) throw new Error('Trình duyệt không hỗ trợ Canvas');
     const hasAdjustments=!!(c.exposure||c.brightness||c.contrast||c.vibrance||c.sharpness);
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
+    if(aspect&&c.format!=='image/png'){ctx.fillStyle='#303842';ctx.fillRect(0,0,w,h);}
+    else if(c.format==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);}
     if(!hasAdjustments){
-      if(c.format==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);}
-      ctx.drawImage(img,sx,sy,srcW,srcH,0,0,w,h);
+      ctx.drawImage(img,sx,sy,srcW,srcH,ox,oy,dw,dh);
     }else{
       // Tile the corrections to avoid allocating multiple full-resolution
       // RGBA arrays on Android. A one-pixel halo prevents sharpness seams.
@@ -526,21 +536,21 @@
       if(!tc)throw new Error('Không tạo được bộ nhớ xử lý ảnh');
       const step=512,halo=c.sharpness?1:0;
       try{
-        for(let y=0;y<h;y+=step){
-          for(let x=0;x<w;x+=step){
+        for(let y=0;y<dh;y+=step){
+          for(let x=0;x<dw;x+=step){
             const left=Math.max(0,x-halo),top=Math.max(0,y-halo);
-            const right=Math.min(w,x+step+halo),bottom=Math.min(h,y+step+halo);
+            const right=Math.min(dw,x+step+halo),bottom=Math.min(dh,y+step+halo);
             const tw=right-left,th=bottom-top;
             tile.width=tw;tile.height=th;
             tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';
             if(c.format==='image/jpeg'){tc.fillStyle='#fff';tc.fillRect(0,0,tw,th);}
-            tc.drawImage(img,sx+left*srcW/w,sy+top*srcH/h,tw*srcW/w,th*srcH/h,0,0,tw,th);
+            tc.drawImage(img,sx+left*srcW/dw,sy+top*srcH/dh,tw*srcW/dw,th*srcH/dh,0,0,tw,th);
             adjustPixels(tc,tw,th,c);
             // putImageData's dirty rectangle writes only the center area;
             // neighbor tiles never modify source pixels for later tiles.
             const data=tc.getImageData(0,0,tw,th);
-            ctx.putImageData(data,left,top,x-left,y-top,
-              Math.min(step,w-x),Math.min(step,h-y));
+            ctx.putImageData(data,ox+left,oy+top,x-left,y-top,
+              Math.min(step,dw-x),Math.min(step,dh-y));
           }
         }
       }finally {tile.width=0;tile.height=0;}
