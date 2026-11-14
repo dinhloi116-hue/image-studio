@@ -1,4 +1,4 @@
-/* Image Studio DHL - Batch Photo Editor R20.22. Patch ruler crop and adaptive toning. */
+/* Image Studio DHL - Batch Photo Editor R20.23. Multi-logo image overlays and keyboard duplication. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
@@ -656,6 +656,10 @@
     }
     drawWatermark(ctx,w,h,c);
     if(c.textEnabled&&window.DHLText)window.DHLText.draw(ctx,w,h,c,file,Math.max(0,state.files.indexOf(file)),Math.max(1,state.files.length));
+    if(window.DHLOverlayUI){
+      if(preview)window.DHLOverlayUI.snapshotBase(canvas,file);
+      window.DHLOverlayUI.draw(ctx,w,h,file);
+    }
     return canvas;
   }
   function setPreviewStatus() {
@@ -676,6 +680,7 @@
       const opt=document.createElement('option');opt.value=String(i);opt.textContent=(i+1)+'. '+f.name;pick.appendChild(opt);
     });
     pick.value=String(state.index);pick.disabled=!len||state.busy;
+    window.DHLOverlayUI?.refresh();
   }
   function schedulePreview() {
     clearTimeout(state.timer);
@@ -698,6 +703,7 @@
       canvas.width=c.width;canvas.height=c.height;
       canvas.getContext('2d').drawImage(c,0,0);
       c.width=0;c.height=0;
+      window.DHLOverlayUI?.sync();
       el('previewNote').textContent='Xem trước ảnh '+(state.index+1)+' • Đang tính dung lượng xuất thực tế…';
       clearTimeout(state.sizeTimer);
       state.sizeTimer=setTimeout(()=>measureSelectedFile(id,file),400);
@@ -737,6 +743,7 @@
           ctx.imageSmoothingEnabled=true;
           ctx.imageSmoothingQuality='high';
           ctx.drawImage(exportedPreview,0,0,p.width,p.height);
+          window.DHLOverlayUI?.sync();
         }
       } finally {release(exportedPreview);}
     } catch(e) {
@@ -756,6 +763,7 @@
       /\.(jpe?g|png|webp|heic|heif|avif)$/i.test(file.name));
     if(!selected.length){show('Không tìm thấy ảnh JPG/PNG/WebP/HEIC/AVIF.',true);return;}
     closeCropEditor();state.cropOverrides.clear();resetCropAnalysis();
+    window.DHLOverlayUI?.clear();
     state.loading=true;
     el('selectFiles').disabled=true;
     state.importSeq++;
@@ -1127,6 +1135,11 @@
     storeSettings();refreshLabels();updatePresetSelection();schedulePreview();
   }
   function init() {
+    window.DHLOverlayUI?.init({
+      getFile:()=>state.files[state.index]||null,
+      schedulePreview:()=>schedulePreview(),
+      decode:file=>decode(file)
+    });
     restoreSettings();
     if(el('cropMode').value==='patch_ruler')el('cropRatio').value='1:1';
     initMobilePwa();
@@ -1212,6 +1225,7 @@
       if(state.busy||state.loading||state.cropScanBusy)return;
       disposeTempFiles();
       closeCropEditor();state.cropOverrides.clear();resetCropAnalysis();
+      window.DHLOverlayUI?.clear();
       state.files=[];state.index=0;state.previewSeq++;clearTimeout(state.timer);clearTimeout(state.sizeTimer);
       state.totals={originals:0,exported:0,exportCount:0};
       state.lastExportSettings=null;
