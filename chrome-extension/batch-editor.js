@@ -828,6 +828,15 @@
       const blob=await blobFromCanvas(canvas,{...c,quality});
       return {blob,quality};
     }
+    // Do not re-compress aggressively when the original file is already small.
+    // Edits still require re-encoding, but no extra size-target search is done.
+    if(originalFile.size<1.5*1024*1024){
+      const quality=.98;
+      const blob=await blobFromCanvas(canvas,{...c,quality});
+      return {blob,quality,warning:blob.size>originalFile.size?
+        'Ảnh gốc dưới 1,5 MB: bỏ qua tối ưu dung lượng, xuất chất lượng 98%; sau chỉnh tăng từ '+
+        mb(originalFile.size)+' lên '+mb(blob.size)+'.':null};
+    }
     const limit=Math.floor(originalFile.size*.99);
     const high=Math.min(.98,Math.max(.92,c.quality));
     const low=Math.min(.92,high);
@@ -963,7 +972,7 @@
     el('qualityRow').hidden=!!useLossless;
     let help;
     if(format==='auto'){
-      help='Giữ nguyên định dạng JPG / PNG / WebP từng ảnh. '+(el('compressionMode').value==='under'?'Cố gắng giảm MB ở chất lượng 92–98%. Nếu ảnh gốc đã nén quá tốt thì vẫn xuất ảnh đã chỉnh, báo tăng dung lượng và không hạ dưới 92%.':'Ưu tiên chất lượng cao, có thể lớn hơn ảnh gốc.')+' JPG/WebP mã hóa lại có hao hụt; không thể đảm bảo giống hệt từng pixel.';
+      help='Giữ nguyên định dạng JPG / PNG / WebP. Ảnh gốc dưới 1,5 MB: bỏ qua tối ưu dung lượng, xuất JPG/WebP ở chất lượng 98%. Ảnh từ 1,5 MB: '+(el('compressionMode').value==='under'?'tự tìm mức nén phù hợp 92–98%, luôn xuất kể cả khi tăng MB.':'ưu tiên chất lượng cao.')+' Mã hóa lại không phải lossless với JPG/WebP.';
     }else if(format==='image/png'){
       help='PNG nén không mất dữ liệu ảnh sau chỉnh sửa nhưng ảnh JPG đổi sang PNG có thể nặng gấp nhiều lần.';
     }else{
