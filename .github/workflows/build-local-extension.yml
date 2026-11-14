@@ -256,6 +256,7 @@ jobs:
           node --check chrome-extension/crop-intelligence.js
           node --check chrome-extension/patch-ruler.js
           node --check chrome-extension/auto-tone.js
+          node scripts/test-batch-crop-tone.cjs
           node --check chrome-extension/text-overlay.js
           node --check chrome-extension/batch-editor.js
           test -s chrome-extension/assets/ffmpeg-core.wasm
