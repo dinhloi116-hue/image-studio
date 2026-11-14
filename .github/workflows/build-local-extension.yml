@@ -116,6 +116,8 @@ jobs:
           shutil.copy2(root/'batch-editor/patch-ruler.js',ext/'patch-ruler.js')
           shutil.copy2(root/'batch-editor/auto-tone.js',ext/'auto-tone.js')
           shutil.copy2(root/'batch-editor/text-overlay.js',ext/'text-overlay.js')
+          shutil.copy2(root/'batch-editor/image-overlay.js',ext/'image-overlay.js')
+          shutil.copy2(root/'batch-editor/image-overlay-ui.js',ext/'image-overlay-ui.js')
 
           # Copy video/FFmpeg engine inside the extension so it runs locally.
           for name in ['video-compressor-r199.js','video-compressor-core-r199.js','ffmpeg-worker-r199.js','ffmpeg-core.js','ffmpeg-core.wasm','stroke-hq-r204.js','halftone-r200.js','halftone-zoom-r202.js','halftone-help-r203.js','nameset-paste-r205.js','nameset-layer-toggle-r206.js','image-sizing-r207.js']:
@@ -252,12 +254,17 @@ jobs:
           test -s chrome-extension/patch-ruler.js
           test -s chrome-extension/auto-tone.js
           test -s chrome-extension/text-overlay.js
+          test -s chrome-extension/image-overlay.js
+          test -s chrome-extension/image-overlay-ui.js
           node --check chrome-extension/crop-core.js
           node --check chrome-extension/crop-intelligence.js
           node --check chrome-extension/patch-ruler.js
           node --check chrome-extension/auto-tone.js
           node scripts/test-batch-crop-tone.cjs
           node --check chrome-extension/text-overlay.js
+          node --check chrome-extension/image-overlay.js
+          node --check chrome-extension/image-overlay-ui.js
+          node scripts/test-image-overlay.cjs
           node --check chrome-extension/batch-editor.js
           test -s chrome-extension/assets/ffmpeg-core.wasm
           test $(stat -c%s chrome-extension/assets/ffmpeg-core.wasm) -gt 20000000
