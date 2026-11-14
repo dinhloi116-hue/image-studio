@@ -35,6 +35,21 @@
     ctx.drawImage(image,0,0,w,h);
     const pixels=ctx.getImageData(0,0,w,h).data;
     canvas.width=0;canvas.height=0;
+    // Transparent background: alpha is more reliable than border colors.
+    let edgeTransparent=0,edgeSamples=0;
+    const countEdge=(x,y)=>{edgeSamples++;if(pixels[(y*w+x)*4+3]<80)edgeTransparent++;};
+    for(let x=0;x<w;x+=Math.max(1,Math.floor(w/30))){countEdge(x,0);countEdge(x,h-1);}
+    for(let y=0;y<h;y+=Math.max(1,Math.floor(h/30))){countEdge(0,y);countEdge(w-1,y);}
+    if(edgeSamples&&edgeTransparent/edgeSamples>.65){
+      let minX=w,maxX=0,minY=h,maxY=0,area=0;
+      for(let y=0;y<h;y++)for(let x=0;x<w;x++){
+        if(pixels[(y*w+x)*4+3]<55)continue;
+        minX=Math.min(minX,x);maxX=Math.max(maxX,x);
+        minY=Math.min(minY,y);maxY=Math.max(maxY,y);area++;
+      }
+      if(area>w*h*.002&&area<w*h*.99)
+        return {x:minX/w,y:minY/h,w:(maxX-minX+1)/w,h:(maxY-minY+1)/h,confidence:area/(w*h)};
+    }
     const channels=[[],[],[]];
     // Median border colors make the detector robust against texture,
     // watermark text and small background highlights.
