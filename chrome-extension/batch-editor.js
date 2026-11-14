@@ -211,7 +211,8 @@
 
   // Every source image gets its own crop, unless the user manually overrides it.
   function frameFor(img,c,file){
-    if(!c.cropEnabled||!window.DHLCrop)return {x:0,y:0,w:1,h:1};
+    if(!c.cropEnabled)return {x:0,y:0,w:1,h:1};
+    if(!window.DHLCrop)throw Error('Không tải được mô-đun Auto Crop. Hãy tải lại ứng dụng.');
     const saved=file&&state.cropOverrides.get(file);
     if(saved)return saved;
     try{
@@ -308,7 +309,10 @@
     const handle=corners.find(c=>Math.hypot((p.x-c[0])*p.width,(p.y-c[1])*p.height)<29);
     const inside=p.x>=b.x&&p.x<=b.x+b.w&&p.y>=b.y&&p.y<=b.y+b.h;
     ed.drag={box:{...b},x:p.x,y:p.y,mode:handle?'resize':'move',corner:handle};
-    if(!handle&&!inside)ed.box=window.DHLCrop.move(b,p.x-(b.x+b.w/2),p.y-(b.y+b.h/2));
+    if(!handle&&!inside){
+      ed.box=window.DHLCrop.move(b,p.x-(b.x+b.w/2),p.y-(b.y+b.h/2));
+      ed.drag.box={...ed.box};
+    }
     el('cropEditor').setPointerCapture?.(event.pointerId);
     event.preventDefault();
     drawCropEditor();
