@@ -30,6 +30,14 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
+## Chế độ Patch có thước và Auto Tone (R20.22)
+
+- Bật **Auto Crop** → **Patch có thước — vuông 1:1**. Thuật toán đọc toàn ảnh ở độ phân giải nhỏ, tìm patch vàng/trắng trên thảm xanh, thước đứng trái và thước ngang dưới, nhận diện dải chữ nền màu cuối ảnh để loại khỏi khung. Khung patch vuông đặt patch gần trung tâm và giữ các mốc thước, có thể chọn ba ô giữ thước trái/thước dưới/bỏ caption. Ảnh không phù hợp hoặc thiếu thước sẽ được đánh dấu **Cần xem lại** để chỉnh tay, không giả vờ nhận diện chính xác. Đây là phát hiện màu/cạnh theo quy tắc, không phải OCR hay AI phân đoạn.
+- **Tự phân tích sáng/tối từng ảnh** (mặc định bật): phân tích histogram của vùng crop, phân biệt ảnh sáng gắt/tối/cân bằng. Khi bật, thuật toán dùng bộ thông số tự chọn, không cộng thêm preset “Rực và rõ” cũ. Có thanh riêng cho **Khôi phục/nén vùng sáng**, **Làm rõ vùng tối**, **Độ rõ & chi tiết vải**; chế độ tay vẫn khả dụng khi tắt Auto.
+- Áo trắng bị cháy sẽ được nén highlight và hạn chế phát sinh vùng trắng 255; thuật toán **không thể khôi phục thông tin ảnh đã cháy trắng tuyệt đối**.
+- Ảnh đầu vào **dưới 1,5 MB** không chạy tìm mức nén nhỏ hơn; JPG/WebP vẫn phải mã hóa lại sau sửa nhưng xuất chất lượng 98%. Ảnh từ 1,5 MB trở lên vẫn thử giảm dung lượng. PNG giữ nguyên cơ chế xuất riêng. Không có ZIP.
+- Các mô-đun mới dùng chung trên PWA Xiaomi và Chrome Extension.
+
 ## Tối ưu hàng loạt và chèn chữ (R20.20)
 
 - Bật **Auto Crop** → **Quét & kiểm tra cả lô**. Tool phân tích ba ngưỡng màu nền, chấm điểm nhất quán và chỉ cắt sát khi đủ tin cậy. Ảnh khó nhận diện được căn an toàn và đưa vào danh sách **Ảnh cần kiểm tra**; người dùng nhấn ảnh thu nhỏ để mở chỉnh tay. Đây là thuật toán xử lý ảnh cục bộ, **không phải AI nhận dạng áo**.
@@ -65,7 +73,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.21 Reliable High-Quality Batch Export**.
+Bản hiện tại: **R20.22 Patch Ruler Crop & Adaptive Tone**.
 
 ### Preset tram DTF
 
