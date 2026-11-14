@@ -1128,6 +1128,7 @@
   }
   function init() {
     restoreSettings();
+    if(el('cropMode').value==='patch_ruler')el('cropRatio').value='1:1';
     initMobilePwa();
     keys.forEach(id=>el(id).addEventListener('input',()=>{storeSettings();refreshLabels();updatePresetSelection();if(id==='quality')updateFormatHelp();schedulePreview();}));
     ['wmMode','wmColor','wmText','format','maxEdge','compressionMode'].forEach(id=>{
