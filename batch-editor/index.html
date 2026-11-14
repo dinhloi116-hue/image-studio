@@ -7,7 +7,7 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" sizes="192x192" href="icons/icon192.png">
 <link rel="apple-touch-icon" href="icons/icon192.png">
-<title>Chỉnh ảnh hàng loạt R20.21 | Image Studio DHL</title>
+<title>Chỉnh ảnh hàng loạt R20.22 | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
 *{box-sizing:border-box}
@@ -41,6 +41,13 @@ fieldset{padding:0;border:0;margin:0;min-width:0}
 .presetRow button{padding:9px 5px;font-size:12px}
 .cropGroup{background:#0e2337;border:1px solid #385a78;padding:13px;border-radius:12px;scroll-margin-top:15px}
 .cropHead{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;cursor:pointer}
+.cropCheck{display:flex!important;gap:9px;align-items:center;font-size:13px;color:#d0e4f5}
+.cropCheck input{width:18px;height:18px;accent-color:#3b82f6;flex-shrink:0}
+.toneBox{display:grid;gap:11px;padding:12px;background:#102a3e;border:1px solid #3b637c;border-radius:11px;margin:10px 0}
+.toneHead{display:flex!important;gap:9px;align-items:center;font-weight:800;color:#e1f4ff;font-size:14px}
+.toneHead input{width:20px;height:20px;accent-color:#3b82f6}
+.toneNote{font-size:12px;color:#a8c7df;margin:0}
+.toneState{font-size:13px;color:#a4e5bd;font-weight:600}
 .cropHead input{width:21px;height:21px;accent-color:#3b82f6}
 .cropSettings{display:grid;gap:11px;margin-top:11px}
 .cropActions{display:flex;gap:8px;flex-wrap:wrap}
@@ -118,7 +125,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 </head>
 <body>
 <header class="top">
-  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.21 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
+  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.22 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
   <button id="goBack" type="button">← Về Image Studio</button>
 </header>
 <main class="shell">
@@ -223,10 +230,17 @@ progress{width:100%;height:12px;accent-color:var(--green)}
             </label>
             <label for="cropMode">Chế độ
               <select id="cropMode">
-                <option value="auto" selected>Thông minh – ưu tiên giữ trọn áo</option>
+                <option value="auto" selected>Thông minh chung (áo, quần…)</option>
+                <option value="patch_ruler">Patch có thước — vuông 1:1</option>
                 <option value="center">Cắt giữa ảnh</option>
               </select>
             </label>
+          </div>
+          <div id="patchCropSettings" class="cropSettings" hidden>
+            <p class="helper">Dành cho ảnh patch trên thảm xanh: nhận diện patch, giữ số đo trên hai thước và bỏ dải chữ dưới cùng. Khung tự căn vuông như ảnh mẫu.</p>
+            <label class="cropCheck" for="cropPatchKeepLeft"><input type="checkbox" id="cropPatchKeepLeft" checked> Giữ thước dọc bên trái</label>
+            <label class="cropCheck" for="cropPatchKeepBottom"><input type="checkbox" id="cropPatchKeepBottom" checked> Giữ thước ngang phía dưới</label>
+            <label class="cropCheck" for="cropPatchRemoveCaption"><input type="checkbox" id="cropPatchRemoveCaption" checked> Bỏ dải chữ / nền màu ở cuối ảnh</label>
           </div>
           <div class="range"><div><label for="cropPadding">Chừa lề quanh sản phẩm</label><output id="cropPaddingValue">7%</output></div>
             <input id="cropPadding" type="range" min="0" max="25" step="1" value="7"></div>
@@ -298,12 +312,24 @@ progress{width:100%;height:12px;accent-color:var(--green)}
       </div>
       <div>
         <h2>4. Chỉnh màu và độ nét</h2>
+        <div class="toneBox">
+          <label class="toneHead" for="autoTone"><input id="autoTone" type="checkbox" checked> Tự phân tích sáng/tối từng ảnh</label>
+          <p class="toneNote">Bật mặc định: tự xử lý ảnh tối, ảnh sáng gắt và ảnh bình thường. Không cộng dồn preset “Rực và rõ” làm cháy áo trắng.</p>
+          <div id="toneStatus" class="toneState">Chọn ảnh để phân tích độ sáng.</div>
+          <div class="range"><div><label for="toneHighlights">Khôi phục / nén vùng sáng</label><output id="toneHighlightsValue">65%</output></div>
+            <input id="toneHighlights" type="range" min="0" max="100" value="65"></div>
+          <div class="range"><div><label for="toneShadows">Làm rõ vùng tối</label><output id="toneShadowsValue">28%</output></div>
+            <input id="toneShadows" type="range" min="0" max="100" value="28"></div>
+          <div class="range"><div><label for="toneClarity">Độ rõ và chi tiết vải</label><output id="toneClarityValue">28%</output></div>
+            <input id="toneClarity" type="range" min="0" max="100" value="28"></div>
+          <p class="toneNote" id="toneModeHelp">Bật Auto: 5 thanh chỉnh tay bên dưới tạm không áp dụng. Tắt Auto nếu muốn chỉnh tay. Không thể khôi phục chi tiết đã mất hoàn toàn ở vùng trắng cháy.</p>
+        </div>
         <div class="presetRow">
           <button type="button" data-preset="neutral">Nguyên bản</button>
           <button type="button" data-preset="shop">Sáng bán hàng</button>
           <button type="button" data-preset="vivid">Rực và rõ</button>
         </div>
-        <p class="helper">Mặc định Rực và rõ. Các chỉnh sửa đã được chia nhỏ để giảm lỗi thiếu bộ nhớ trên Android.</p>
+        <p class="helper">Các preset dưới đây dùng khi tắt “Tự phân tích sáng/tối”. Chế độ tự động ưu tiên giữ chi tiết vùng trắng và tăng độ rõ theo từng ảnh.</p>
         <div class="range"><div><label for="exposure">Phơi sáng</label><output id="exposureValue"></output></div><input id="exposure" type="range" min="-150" max="150" step="1" value="9"></div>
         <div class="range"><div><label for="brightness">Độ sáng</label><output id="brightnessValue"></output></div><input id="brightness" type="range" min="-100" max="100" step="1" value="12"></div>
         <div class="range"><div><label for="contrast">Tương phản</label><output id="contrastValue"></output></div><input id="contrast" type="range" min="-100" max="100" step="1" value="14"></div>
@@ -335,6 +361,8 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 </main>
 <script src="crop-core.js"></script>
 <script src="crop-intelligence.js"></script>
+<script src="patch-ruler.js"></script>
+<script src="auto-tone.js"></script>
 <script src="text-overlay.js"></script>
 <script src="app.js"></script>
 </body>
