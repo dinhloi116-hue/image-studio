@@ -1,9 +1,9 @@
-/* Image Studio DHL - Batch Photo Editor R20.18. Xiaomi robust image import and decoding. */
+/* Image Studio DHL - Batch Photo Editor R20.19. Opt-in batch crop and manual framing. */
 (function () {
   'use strict';
   const el = id => document.getElementById(id);
   const keys = ['exposure','brightness','contrast','vibrance','sharpness','wmOpacity','wmSize','wmGap','wmAngle','quality'];
-  const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode'];
+  const savedSettingIds = [...keys,'wmText','wmMode','wmColor','format','maxEdge','compressionMode','cropEnabled','cropRatio','cropMode','cropPadding','cropSensitivity'];
   const settingsKey='dhl-image-studio-android-settings-v2';
   let installEvent=null;
   window.addEventListener('beforeinstallprompt',event=>{
@@ -20,7 +20,7 @@
   function storeSettings(){
     try{
       const saved={};
-      for(const id of savedSettingIds){const control=document.getElementById(id);if(control)saved[id]=control.value;}
+      for(const id of savedSettingIds){const control=document.getElementById(id);if(control)saved[id]=control.type==='checkbox'?control.checked:control.value;}
       localStorage.setItem(settingsKey,JSON.stringify(saved));
     }catch(_){ /* private mode may block storage */ }
   }
@@ -29,8 +29,10 @@
       const data=JSON.parse(localStorage.getItem(settingsKey)||'{}');
       for(const id of savedSettingIds){
         const node=document.getElementById(id);
-        if(node && Object.prototype.hasOwnProperty.call(data,id) &&
-          (node.tagName!=='SELECT' || [...node.options].some(option=>option.value===data[id])))node.value=data[id];
+        if(node && Object.prototype.hasOwnProperty.call(data,id)){
+          if(node.type==='checkbox')node.checked=data[id]===true;
+          else if(node.tagName!=='SELECT'||[...node.options].some(option=>option.value===data[id]))node.value=data[id];
+        }
       }
     }catch(_){ /* use defaults if unavailable */ }
   }
@@ -69,7 +71,7 @@
       });
     }
   }
-  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, totals: { originals:0, exported:0, exportCount:0 } };
+  const state = { files: [], index: 0, busy: false, loading: false, importSeq: 0, tempFolderName: null, cancel: false, previewSeq: 0, timer: null, sizeTimer: null, lastExportSettings: null, cropOverrides:new Map(), cropEditor:null, cropEditorSeq:0, totals: { originals:0, exported:0, exportCount:0 } };
   const presets = {
     neutral: { exposure:0, brightness:0, contrast:0, vibrance:0, sharpness:0 },
     shop: { exposure:14, brightness:8, contrast:8, vibrance:18, sharpness:26 },
@@ -189,12 +191,15 @@
       wmMode:el('wmMode').value, wmOpacity:number('wmOpacity')/100,
       wmSize:number('wmSize')/100, wmGap:number('wmGap'), wmAngle:number('wmAngle'),
       wmColor:el('wmColor').value, format:el('format').value,
-      quality:number('quality')/100, maxEdge:number('maxEdge'), compressionMode:el('compressionMode').value
+      quality:number('quality')/100, maxEdge:number('maxEdge'), compressionMode:el('compressionMode').value,
+      cropEnabled:el('cropEnabled').checked,cropRatio:el('cropRatio').value,
+      cropMode:el('cropMode').value,cropPadding:number('cropPadding'),cropSensitivity:number('cropSensitivity')
     };
   }
   function formatValue(id) {
     const n = number(id);
     if (id === 'exposure') return (n>0?'+':'')+(n/100).toFixed(2)+' EV';
+    if(id==='cropPadding'||id==='cropSensitivity')return n+'%';
     if (id === 'wmSize') return n+'%';
     if (id === 'wmAngle') return n+'°';
     if (id === 'quality') return n+'%';
@@ -331,12 +336,14 @@
     }
     ctx.restore();
   }
-  function renderImage(img,c,preview) {
+  function renderImage(img,c,preview,file) {
     const [sw,sh]=imageDims(img);
     if(!sw||!sh) throw new Error('Ảnh không có kích thước hợp lệ');
+    const box=frameFor(img,c,file);
+    const sx=box.x*sw,sy=box.y*sh,srcW=box.w*sw,srcH=box.h*sh;
     const limit=preview?980:c.maxEdge;
-    const scale=limit>0?Math.min(1,limit/Math.max(sw,sh)):1;
-    const w=Math.max(1,Math.round(sw*scale)),h=Math.max(1,Math.round(sh*scale));
+    const scale=limit>0?Math.min(1,limit/Math.max(srcW,srcH)):1;
+    const w=Math.max(1,Math.round(srcW*scale)),h=Math.max(1,Math.round(srcH*scale));
     const canvas=document.createElement('canvas');
     canvas.width=w;canvas.height=h;
     const ctx=canvas.getContext('2d',{willReadFrequently:true});
@@ -345,7 +352,7 @@
     ctx.imageSmoothingEnabled=true;ctx.imageSmoothingQuality='high';
     if(!hasAdjustments){
       if(c.format==='image/jpeg'){ctx.fillStyle='#fff';ctx.fillRect(0,0,w,h);}
-      ctx.drawImage(img,0,0,w,h);
+      ctx.drawImage(img,sx,sy,srcW,srcH,0,0,w,h);
     }else{
       // Tile the corrections to avoid allocating multiple full-resolution
       // RGBA arrays on Android. A one-pixel halo prevents sharpness seams.
@@ -362,7 +369,7 @@
             tile.width=tw;tile.height=th;
             tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';
             if(c.format==='image/jpeg'){tc.fillStyle='#fff';tc.fillRect(0,0,tw,th);}
-            tc.drawImage(img,left*sw/w,top*sh/h,tw*sw/w,th*sh/h,0,0,tw,th);
+            tc.drawImage(img,sx+left*srcW/w,sy+top*srcH/h,tw*srcW/w,th*srcH/h,0,0,tw,th);
             adjustPixels(tc,tw,th,c);
             // putImageData's dirty rectangle writes only the center area;
             // neighbor tiles never modify source pixels for later tiles.
@@ -379,6 +386,7 @@
   function setPreviewStatus() {
     const len=state.files.length;
     el('count').textContent=len+' ảnh • '+mb(state.totals.originals);
+    updateCropControls();
     el('download').disabled=!len||state.busy||state.loading;
     el('saveFolder').disabled=!len||state.busy||state.loading;
     el('clear').disabled=!len||state.busy||state.loading;
@@ -407,7 +415,7 @@
     try {
       img=await decode(file);
       if(id!==state.previewSeq) return;
-      const c=renderImage(img,perFileConfig(config(),file),true);
+      const c=renderImage(img,perFileConfig(config(),file),true,file);
       if(id!==state.previewSeq) return;
       const canvas=el('preview');
       canvas.width=c.width;canvas.height=c.height;
@@ -426,7 +434,7 @@
       const c=perFileConfig(config(),file);
       img=await decode(file);
       if(id!==state.previewSeq || state.busy) return;
-      canvas=renderImage(img,c,false);
+      canvas=renderImage(img,c,false,file);
       const {blob,quality}=await encodeForExport(canvas,c,file);
       if(blob.type && blob.type!==c.format) throw new Error('Trình duyệt không hỗ trợ kiểu ảnh này');
       if(id!==state.previewSeq || state.busy) return;
@@ -606,7 +614,7 @@
         try {
           const one=perFileConfig(c,files[i]);
           img=await decode(files[i]);
-          canvas=renderImage(img,one,false);
+          canvas=renderImage(img,one,false,files[i]);
           const {blob}=await encodeForExport(canvas,one,files[i]);
           if(blob.type && blob.type!==one.format) throw new Error('Trình duyệt không hỗ trợ '+one.format);
           const filename=nameFor(files[i],outputExtension(one.format),used);
