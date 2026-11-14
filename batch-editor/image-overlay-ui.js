@@ -204,6 +204,7 @@
       previous:{...result.layer},angle:Math.atan2(p.y-result.layer.y*canvas.height,
         p.x-result.layer.x*canvas.width)};
     canvas.setPointerCapture?.(event.pointerId);
+    canvas.focus?.({preventScroll:true});
     refresh();event.preventDefault();
   }
   function pointerMove(event){
