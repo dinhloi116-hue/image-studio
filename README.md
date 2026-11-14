@@ -25,7 +25,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xuất **từng ảnh hàng loạt, không ZIP**; Chrome có thể xin quyền tải nhiều file. Trên trình duyệt hỗ trợ File System Access API có thêm nút chọn thư mục lưu trực tiếp. Tên ảnh thêm `_DHL`, tùy chọn giữ nguyên kích thước, 4000/3000/2048 px; JPG/PNG/WebP.
 - Hiện **MB gốc** và **MB xuất thử thực tế** cho ảnh đang xem, tổng MB gốc, tổng MB ước tính trước khi xuất và tổng MB thực tế sau khi xuất.
 - **Mặc định giữ định dạng nguồn** theo từng ảnh JPG → JPG, PNG → PNG, WebP → WebP.
-- **Giảm MB, giữ chất lượng thị giác cao (mặc định):** thử mã hóa JPG/WebP từ chất lượng cao xuống không dưới 92% và chọn chất lượng cao nhất có file nhỏ hơn ảnh gốc ít nhất 1%. Nếu không thể đạt ngưỡng, báo lỗi riêng ảnh đó thay vì tự tăng dung lượng hoặc hạ quá thấp. Xem trước bằng chính file nén thử nghiệm. Có chế độ riêng cho phép file lớn hơn nếu người dùng ưu tiên chất lượng tối đa.
+- **Cố gắng giảm MB, vẫn xuất ảnh (mặc định):** thử JPG/WebP ở mức chất lượng cao 92–98%, chọn chất lượng cao nhất nếu file đạt mục tiêu nhỏ hơn ít nhất 1%. Nếu ảnh gốc đã nén rất tốt, vẫn xuất file đã chỉnh ở chất lượng 92% và cảnh báo tăng MB thay vì bỏ qua ảnh. PNG cũng luôn xuất và cảnh báo khi lớn hơn gốc. Xem trước bằng chính file nén thử nghiệm. Không thể đồng thời đảm bảo lossless, chỉnh ảnh, và file luôn nhẹ hơn.
 - **Giới hạn kỹ thuật:** ảnh chỉnh sửa/watermark JPG cần mã hóa lại, nên không thể bảo đảm 100% pixel giống bản đã chỉnh mà luôn giảm dung lượng. PNG bảo toàn pixel nhưng có thể nặng hoặc không thể giảm MB.
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
@@ -65,7 +65,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.20 Smart Crop Review & Text Overlay**.
+Bản hiện tại: **R20.21 Reliable High-Quality Batch Export**.
 
 ### Preset tram DTF
 
