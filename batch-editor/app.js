@@ -507,8 +507,8 @@
       const y0=.2126*r0+.7152*g0+.0722*b0;
       let target=(y0*exp+brightness-127.5)*contrast+127.5;
       // Smooth shoulder around high whites; prevents further clipping.
-      const ht=Math.max(0,Math.min(1,(target-165)/90));
-      target-=highlight*.25*ht*ht*(3-2*ht);
+      const ht=Math.max(0,Math.min(1,(target-195)/60));
+      target-=highlight*.12*ht*ht*(3-2*ht);
       const st=Math.max(0,Math.min(1,(145-target)/145));
       target+=shadows*.30*st*st;
       const delta=target-y0;
