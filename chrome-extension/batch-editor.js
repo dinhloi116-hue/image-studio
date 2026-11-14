@@ -491,39 +491,69 @@
   function release(img) { if(img && typeof img.close === 'function') img.close(); }
   function imageDims(img) {return [img.width || img.naturalWidth || img.displayWidth, img.height || img.naturalHeight || img.displayHeight];}
   function adjustPixels(ctx,w,h,c) {
-    if (!c.exposure && !c.brightness && !c.contrast && !c.vibrance && !c.sharpness) return;
-    const image=ctx.getImageData(0,0,w,h), d=image.data, lut=new Uint8ClampedArray(256);
-    const exp=Math.pow(2,c.exposure), k=1+c.contrast/100, bright=c.brightness*1.25;
-    for(let i=0;i<256;i++) lut[i]=clamp(((i*exp+bright)-127.5)*k+127.5);
-    const vib=c.vibrance/100;
-    for(let i=0;i<d.length;i+=4) {
-      if(!d[i+3]) continue;
-      let r=lut[d[i]], g=lut[d[i+1]], b=lut[d[i+2]];
-      if(vib) {
+    const highlight=Math.max(0,Math.min(100,Number(c.highlightRecover)||0));
+    const shadows=Math.max(0,Math.min(100,Number(c.shadowLift)||0));
+    const clarity=Math.max(0,Math.min(100,Number(c.clarity)||0));
+    if(!c.exposure&&!c.brightness&&!c.contrast&&!c.vibrance&&!c.sharpness&&
+      !highlight&&!shadows&&!clarity)return;
+    const frame=ctx.getImageData(0,0,w,h),d=frame.data;
+    const exp=Math.pow(2,Number(c.exposure)||0);
+    const contrast=1+(Number(c.contrast)||0)/100;
+    const brightness=(Number(c.brightness)||0)*.9;
+    const vib=(Number(c.vibrance)||0)/100;
+    for(let i=0;i<d.length;i+=4){
+      if(d[i+3]<1)continue;
+      const r0=d[i],g0=d[i+1],b0=d[i+2];
+      const y0=.2126*r0+.7152*g0+.0722*b0;
+      let target=(y0*exp+brightness-127.5)*contrast+127.5;
+      // Smooth shoulder around high whites; prevents further clipping.
+      const ht=Math.max(0,Math.min(1,(target-165)/90));
+      target-=highlight*.25*ht*ht*(3-2*ht);
+      const st=Math.max(0,Math.min(1,(145-target)/145));
+      target+=shadows*.30*st*st;
+      const delta=target-y0;
+      let r=r0+delta,g=g0+delta,b=b0+delta;
+      if(vib){
         const spread=Math.max(r,g,b)-Math.min(r,g,b);
-        const amount=1+vib*(1-spread/255)*1.18;
-        const lum=.2126*r+.7152*g+.0722*b;
-        r=clamp(lum+(r-lum)*amount);
-        g=clamp(lum+(g-lum)*amount);
-        b=clamp(lum+(b-lum)*amount);
+        const strength=1+vib*(1-Math.max(0,spread)/255)*.86;
+        const y=.2126*r+.7152*g+.0722*b;
+        r=y+(r-y)*strength;g=y+(g-y)*strength;b=y+(b-y)*strength;
       }
-      d[i]=r;d[i+1]=g;d[i+2]=b;
+      if(c.autoTone){
+        // Do not produce 255-level white blocks from an already bright source.
+        // Distinct values above 235 remain distinct with a soft shoulder.
+        const shoulder=x=>x>235?235+(x-235)*.68:x;
+        r=shoulder(r);g=shoulder(g);b=shoulder(b);
+      }
+      d[i]=clamp(r);d[i+1]=clamp(g);d[i+2]=clamp(b);
     }
-    if(c.sharpness>0 && w>2 && h>2) {
-      const original=new Uint8ClampedArray(d);
-      const strength=c.sharpness/100*.42;
-      for(let y=1;y<h-1;y++) {
+    // Edge-limited unsharp detail. Keep a small halo in tiled processing.
+    const sharp=Math.max(0,Number(c.sharpness)||0);
+    if((sharp||clarity)&&w>2&&h>2){
+      const before=new Uint8ClampedArray(d);
+      const sharpStrength=sharp/100*.24;
+      const clarityStrength=clarity/100*.18;
+      const stride=w*4;
+      for(let y=1;y<h-1;y++){
         let i=(y*w+1)*4;
-        for(let x=1;x<w-1;x++,i+=4) {
-          if(!original[i+3]) continue;
-          for(let ch=0;ch<3;ch++) {
-            const p=original[i+ch];
-            d[i+ch]=clamp(p+strength*(4*p-original[i-4+ch]-original[i+4+ch]-original[i-w*4+ch]-original[i+w*4+ch]));
+        for(let x=1;x<w-1;x++,i+=4){
+          if(before[i+3]<60)continue;
+          const luma=.2126*before[i]+.7152*before[i+1]+.0722*before[i+2];
+          const textureWeight=luma<50?.32:luma>248?.24:1;
+          for(let ch=0;ch<3;ch++){
+            const p=before[i+ch],neighbor=(before[i-4+ch]+before[i+4+ch]+
+              before[i-stride+ch]+before[i+stride+ch])/4;
+            const diff=p-neighbor;
+            if(Math.abs(diff)<1.7)continue;
+            // Suppress strong hard edges/halos while retaining fine weave.
+            const limited=Math.max(-38,Math.min(38,diff));
+            const gain=(sharpStrength+clarityStrength*textureWeight);
+            d[i+ch]=clamp(p+Math.max(-15,Math.min(15,limited*gain*1.65)));
           }
         }
       }
     }
-    ctx.putImageData(image,0,0);
+    ctx.putImageData(frame,0,0);
   }
   function drawWatermark(ctx,w,h,c) {
     if(c.wmMode==='none' || !c.wmText || c.wmOpacity===0) return;
