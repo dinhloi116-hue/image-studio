@@ -1,6 +1,6 @@
 IMAGE STUDIO DHL - LOCAL EXTENSION
 ==================================
-Tool version: R20.23-MULTI-LOGO-IMAGE-OVERLAYS
+Tool version: R20.24-MULTI-IMAGE-OVERLAY-IMPORT
 
 CÀI LẦN ĐẦU BẰNG GITHUB DESKTOP
 1. GitHub Desktop -> Clone repository: dinhloi116-hue/image-studio
