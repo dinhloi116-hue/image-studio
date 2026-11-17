@@ -7,7 +7,7 @@
 
 
 
-<title>Chỉnh ảnh hàng loạt R20.23 | Image Studio DHL</title>
+<title>Chỉnh ảnh hàng loạt R20.24 | Image Studio DHL</title>
 <style>
 :root{color-scheme:dark;--bg:#0b1220;--panel:#131e2f;--line:#2b3b50;--ink:#f0f5fc;--muted:#a9b8cc;--blue:#3b82f6;--green:#22c55e}
 *{box-sizing:border-box}
@@ -111,6 +111,18 @@ background-image:linear-gradient(45deg,#162237 25%,transparent 25%),linear-gradi
 .overlayScope{display:flex!important;align-items:center;gap:9px;font-size:13px;color:#c9def5}
 .overlayScope input{width:19px;height:19px;accent-color:#8b5cf6}
 .overlayStatus{font-size:12px;color:#c5f1d8}
+.overlayAddRow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.overlayAddRow .pick{flex:1;min-width:160px;font-size:13px;background:#4c1d95;border-color:#8b5cf6}
+#overlayFile{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.overlayLayerGallery{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;max-height:380px;overflow:auto}
+.overlayTile{display:flex;align-items:center;gap:8px;min-width:0;text-align:left;padding:6px;border-radius:9px;border:1px solid #3d5370;background:#102236}
+.overlayTile.active{outline:2px solid #b586ff;border-color:#b586ff}
+.overlayTile img{width:54px;height:54px;flex-shrink:0;object-fit:contain;background:#25344a;border-radius:6px}
+.overlayTileText{min-width:0;flex:1}
+.overlayTileTitle{display:block;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.overlayTileMeta{display:block;color:#acc7e7;font-size:11px}
+.overlayLayerHeading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+@media(max-width:420px){.overlayLayerGallery{grid-template-columns:1fr}}
 #preview{display:block;max-width:100%;max-height:min(65vh,760px);width:auto;height:auto;object-fit:contain}
 #fileSelect{max-width:100%}
 .exportArea{display:grid;gap:10px;border-top:1px solid var(--line);padding-top:14px}
@@ -139,7 +151,7 @@ progress{width:100%;height:12px;accent-color:var(--green)}
 </head>
 <body>
 <header class="top">
-  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.23 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
+  <div><h1>Chỉnh ảnh hàng loạt</h1><p>IMAGE STUDIO DHL R20.24 • Xuất ảnh ổn định + Auto Crop + chèn chữ • Watermark & chỉnh màu hàng loạt</p></div>
   <button id="goBack" type="button">← Về Image Studio</button>
 </header>
 <main class="shell">
@@ -335,9 +347,13 @@ progress{width:100%;height:12px;accent-color:var(--green)}
         </label>
         <p class="overlaySmall">Tải PNG, JPG hoặc WebP từ máy; mỗi ảnh có thể chèn nhiều logo. Ảnh đè có thể kéo, đổi kích thước, xoay góc như Canva. Độ mờ mặc định 100%.</p>
         <div id="overlaySettings" class="overlaySettings" hidden>
-          <label for="overlayFile">Thêm hình ảnh lên ảnh đang xem
+          <div class="overlayAddRow">
+            <label class="pick" for="overlayFile">＋ Chọn nhiều ảnh đè / Thêm ảnh mới</label>
             <input id="overlayFile" type="file" accept="image/png,image/jpeg,image/webp,.png,.jpg,.jpeg,.webp" multiple>
-          </label>
+          </div>
+          <p class="overlaySmall">Chọn nhiều logo cùng một lần, hoặc bấm thêm nhiều lần. Ảnh mới sẽ xuất hiện thành những lớp riêng, không thay thế ảnh đã chèn.</p>
+          <div class="overlayLayerHeading"><strong>Danh sách ảnh đè</strong><strong id="overlayLayerCount">0 lớp</strong></div>
+          <div id="overlayLayerGallery" class="overlayLayerGallery" aria-label="Danh sách tất cả ảnh đè đã thêm"></div>
           <label class="overlayScope" for="overlayApplyAll">
             <input type="checkbox" id="overlayApplyAll">
             Áp dụng lớp mới lên tất cả ảnh (mặc định: chỉ ảnh đang xem)
