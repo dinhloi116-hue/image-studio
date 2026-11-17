@@ -30,6 +30,14 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 - Xử lý trực tiếp trên thiết bị bằng Canvas; không tải ảnh lên máy chủ. Không ghi đè ảnh gốc.
 - Phiên bản Chrome offline nằm trong `chrome-extension/batch-editor.html` và `batch-editor.js`, build-local-extension tự đồng bộ từ `batch-editor/`.
 
+## Thêm nhiều ảnh đè riêng biệt (R20.24)
+
+- Bật **Chèn ảnh đè** → **Chọn nhiều ảnh đè / Thêm ảnh mới**. Có thể chọn nhiều PNG/JPG/WebP trong **một lần** hoặc dùng lại nút này nhiều lần; file mới không thay thế lớp cũ.
+- Sau khi chọn, một **danh sách thumbnail** hiện mọi ảnh đè đang có. Chạm vào từng thumbnail để thay đổi vị trí, góc xoay, kích thước và độ mờ của đúng lớp đó.
+- Ảnh mới được tự dàn vào nhiều vị trí trên preview thay vì chồng lên một điểm. Độ mờ của mỗi lớp mặc định 100%.
+- Sửa lỗi Xiaomi: giữ bộ chọn ảnh hoạt động cho đến khi từng file được sao chép thành Blob ổn định và giải mã xong. Chỉ reset sau khi nhập toàn bộ; nếu một file lỗi thì vẫn tiếp tục các file khác.
+- Vẫn có **Copy / Dán**, nhân bản, xóa, đổi thứ tự và tùy chọn áp dụng cho mọi ảnh gốc. Ảnh xuất có đủ mọi lớp, nhưng không có viền điều khiển.
+ 
 ## Chèn ảnh đè nhiều lớp (R20.23)
 
 - Trong **Chỉnh ảnh hàng loạt**, bật ô **Chèn ảnh đè**, chọn một hoặc nhiều logo PNG/JPG/WebP có sẵn trên điện thoại/máy tính. PNG hỗ trợ nền trong suốt, ảnh có nền trắng sẽ giữ đúng nền trắng như nguồn.
@@ -82,7 +90,7 @@ Công cụ xử lý ảnh chạy trực tiếp trên trình duyệt, không cầ
 
 Mở `index.html` bằng Chrome/Edge khi tải repo về máy, hoặc bật GitHub Pages từ nhánh `main` để dùng trực tuyến.
 
-Bản hiện tại: **R20.23 Multiple Image Overlays**.
+Bản hiện tại: **R20.24 Multi-Image Overlay Import**.
 
 ### Preset tram DTF
 
