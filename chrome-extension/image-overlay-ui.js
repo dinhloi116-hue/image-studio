@@ -1,4 +1,4 @@
-/* DHL Image Studio R20.23 - client-side multi-layer image overlay UI.
+/* DHL Image Studio R20.24 - resilient multi-image overlay input and layer gallery.
  * Ctrl+C / Ctrl+V duplicate the currently selected logo with a small offset.
  * Layers may apply only to the viewed photo or globally to all photo exports.
  */
@@ -27,14 +27,44 @@
     const per=state.perFile.get(currentFile());
     return per?.includes(layer)?per:null;
   }
-  function pushLayer(layer){
-    if($('overlayApplyAll').checked)state.global.push(layer);
+  function pushLayer(layer,file=currentFile(),applyAll=$('overlayApplyAll').checked){
+    if(applyAll)state.global.push(layer);
     else {
-      const file=currentFile();
       if(!file)throw Error('Hãy chọn ảnh gốc trước khi chèn logo.');
       let list=state.perFile.get(file);
       if(!list){list=[];state.perFile.set(file,list);}
       list.push(layer);
+    }
+  }
+  function gallery(layers){
+    const list=$('overlayLayerGallery');
+    if(!list)return;
+    list.replaceChildren();
+    $('overlayLayerCount').textContent=layers.length+' lớp';
+    if(!layers.length){
+      const hint=document.createElement('p');hint.className='overlaySmall';
+      hint.textContent='Chưa có ảnh đè. Nhấn “Chọn nhiều ảnh đè” để thêm 2, 3, 5 logo hoặc nhiều hơn.';
+      list.appendChild(hint);
+      return;
+    }
+    for(let index=0;index<layers.length;index++){
+      const layer=layers[index],info=asset(layer);
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='overlayTile'+(layer.id===state.selected?' active':'');
+      button.setAttribute('aria-pressed',String(layer.id===state.selected));
+      const thumb=document.createElement('img');
+      if(info?.thumb)thumb.src=info.thumb;
+      thumb.alt='Logo '+(index+1);
+      const details=document.createElement('span');details.className='overlayTileText';
+      const title=document.createElement('strong');title.className='overlayTileTitle';
+      title.textContent=(index+1)+'. '+(info?.name||'Hình đè');
+      const meta=document.createElement('span');meta.className='overlayTileMeta';
+      meta.textContent=(state.global.includes(layer)?'Tất cả ảnh':'Ảnh hiện tại')+
+        ' • '+Math.round(layer.opacity*100)+'%';
+      details.append(title,meta);button.append(thumb,details);
+      button.addEventListener('click',()=>{state.selected=layer.id;refresh();});
+      list.appendChild(button);
     }
   }
   function refresh(){
@@ -55,6 +85,7 @@
       picker.appendChild(opt);
     });
     picker.value=state.selected||'';
+    gallery(layers);
     for(const id of ['overlayCopy','overlayDelete','overlayDuplicate','overlayForward','overlayBackward'])
       $(id).disabled=!on||!layer;
     $('overlayPaste').disabled=!on||!state.clipboard||!file;
@@ -112,36 +143,79 @@
     refresh();
     state.bridge?.schedulePreview?.();
   }
+  function makeThumbnail(img){
+    const canvas=document.createElement('canvas');
+    canvas.width=72;canvas.height=72;
+    try{
+      const ctx=canvas.getContext('2d');
+      const iw=img.width||img.naturalWidth||img.displayWidth||1;
+      const ih=img.height||img.naturalHeight||img.displayHeight||1;
+      const fit=Math.min(70/iw,70/ih);
+      const w=iw*fit,h=ih*fit;
+      ctx.drawImage(img,(72-w)/2,(72-h)/2,w,h);
+      return canvas.toDataURL('image/png');
+    }catch(_){return '';}
+    finally{canvas.width=0;canvas.height=0;}
+  }
   async function loadAsset(file){
-    if(!file||!(file.type.match(/^image\/(png|jpeg|webp)$/)||/\.(png|jpe?g|webp)$/i.test(file.name)))
+    if(!file||!(/^(image\/(png|jpeg|webp))$/i.test(file.type||'')||
+      /\.(png|jpe?g|webp)$/i.test(file.name||'')))
       throw Error('Chỉ chấp nhận PNG/JPG/WebP.');
-    const img=await state.bridge.decode(file);
+    // Android Gallery may revoke a picked File after the input is cleared.
+    // Read its bytes while selection is alive, then decode the stable local blob.
+    const bytes=await file.arrayBuffer();
+    if(!bytes.byteLength)throw Error('Tệp ảnh rỗng hoặc không đọc được.');
+    const stable=new Blob([bytes],{type:file.type||'application/octet-stream'});
+    const img=await state.bridge.decode(stable);
     const id=next('asset-');
-    state.assets.set(id,{image:img,name:file.name});
+    state.assets.set(id,{image:img,name:file.name,thumb:makeThumbnail(img)});
     return id;
   }
+  function arrangeNew(layer,index,existing,totalNew){
+    if(totalNew===1&&existing===0)return;
+    // Spread multiple logos into distinct visible positions instead of stacking
+    // every new image at the center, which made the UI look limited to one image.
+    const slot=(existing+index)%9;
+    layer.x=[.20,.50,.80][slot%3];
+    layer.y=[.22,.50,.78][Math.floor(slot/3)];
+    layer.width=Math.min(layer.width,.24);
+  }
   async function upload(event){
-    const files=Array.from(event.target.files||[]);
-    event.target.value='';
+    if(state.loading)return;
+    const picker=event.target;
+    const files=Array.from(picker.files||[]);
     if(!files.length)return;
-    if(!currentFile()){updateStatus('Chọn ảnh gốc trước khi thêm hình đè.',true);return;}
+    const target=currentFile();
+    if(!target){updateStatus('Chọn ảnh gốc trước khi thêm hình đè.',true);return;}
+    const applyAll=$('overlayApplyAll').checked;
+    const existing=state.global.length+(state.perFile.get(target)?.length||0);
     state.loading=true;refresh();
-    let ok=0,errors=[];
-    for(const file of files){
-      try{
-        const assetId=await loadAsset(file);
-        const layer=core.make(assetId,next('layer-'),state.assets.get(assetId),{
-          x:.50+Math.min(.12,ok*.04),y:.50+Math.min(.12,ok*.04)});
-        layer.opacity=1;
-        pushLayer(layer);
-        state.selected=layer.id;ok++;
-      }catch(error){errors.push(file.name+': '+error.message);}
+    let ok=0;
+    const errors=[];
+    try{
+      for(const file of files){
+        try{
+          const assetId=await loadAsset(file);
+          const layer=core.make(assetId,next('layer-'),state.assets.get(assetId));
+          arrangeNew(layer,ok,existing,files.length);
+          layer.opacity=1;
+          pushLayer(layer,target,applyAll);
+          state.selected=layer.id;
+          ok++;
+          updateStatus('Đang thêm '+ok+'/'+files.length+' ảnh đè…');
+        }catch(error){
+          errors.push(file.name+': '+String(error?.message||error));
+        }
+      }
+    }finally{
+      // Only reset after reading and decoding every selected image (Xiaomi).
+      picker.value='';
+      state.loading=false;
+      refresh();
+      if(ok){redrawPreview();state.bridge.schedulePreview();}
+      updateStatus(ok+' ảnh mới được thêm, tổng '+visible().length+' lớp trên ảnh này.'+
+        (errors.length?' Không đọc được: '+errors.join('; '):''),!!errors.length);
     }
-    state.loading=false;
-    $('overlayEnabled').checked=true;
-    refresh();redrawPreview();state.bridge.schedulePreview();
-    updateStatus(ok+' ảnh đè đã thêm • '+visible().length+' lớp trên ảnh hiện tại.'+
-      (errors.length?' Lỗi: '+errors.join('; '):''),!!errors.length);
   }
   function copy(){
     const layer=selected();
