@@ -265,6 +265,7 @@ jobs:
           node --check chrome-extension/image-overlay.js
           node --check chrome-extension/image-overlay-ui.js
           node scripts/test-image-overlay.cjs
+          node scripts/test-multi-image-import.cjs
           node --check chrome-extension/batch-editor.js
           test -s chrome-extension/assets/ffmpeg-core.wasm
           test $(stat -c%s chrome-extension/assets/ffmpeg-core.wasm) -gt 20000000
