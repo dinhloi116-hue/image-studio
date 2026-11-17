@@ -3,7 +3,7 @@
  * are never uploaded or stored in the service worker cache.
  */
 'use strict';
-const CACHE_NAME='dhl-image-studio-pwa-r20-23-logo-overlays';
+const CACHE_NAME='dhl-image-studio-pwa-r20-24-multiple-overlays';
 const SHELL=['./','./index.html','./app.js','./crop-core.js','./crop-intelligence.js','./patch-ruler.js','./auto-tone.js','./text-overlay.js','./image-overlay.js','./image-overlay-ui.js','./manifest.webmanifest',
   './icons/icon192.png','./icons/icon512.png','./icons/icon192-maskable.png','./icons/icon512-maskable.png'];
 
